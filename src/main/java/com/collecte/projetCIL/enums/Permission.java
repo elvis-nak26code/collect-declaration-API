@@ -1,0 +1,12 @@
+package com.collecte.projetCIL.enums;
+
+public enum Permission {
+    GERER_TRAITEMENT,
+    GERER_DECLARATION,
+    GERER_UTILISATEUR,
+    SOUMETTRE_DEMANDE,
+    DEPOSER_PLAINTE,
+    GERER_PLAINTE,
+    GERER_DEMANDE,
+    CONSULTER_DONNEE
+}
