@@ -1,6 +1,5 @@
 package com.collecte.projetCIL.models;
 
-import com.collecte.projetCIL.enums.NatureDemande;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

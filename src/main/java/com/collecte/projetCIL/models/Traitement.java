@@ -1,6 +1,5 @@
 package com.collecte.projetCIL.models;
 
-import com.collecte.projetCIL.enums.StatutSession;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
