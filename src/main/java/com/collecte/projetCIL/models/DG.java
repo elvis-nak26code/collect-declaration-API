@@ -17,4 +17,7 @@ public class DG extends Utilisateur {
 
     @Column(name = "id_dg")
     private String idDg;
+
+    @Column
+private String telephone;
 }

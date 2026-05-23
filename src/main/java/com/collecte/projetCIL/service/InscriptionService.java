@@ -28,13 +28,11 @@ public class InscriptionService {
             throw new RuntimeException("Email déjà utilisé : " + request.getEmail());
         }
 
-        // Créer l'utilisateur selon le type, statut EN_ATTENTE
         Utilisateur utilisateur = creerUtilisateur(request);
         utilisateur.setStatutUtilisateur(StatutUtilisateur.INACTIF);
         utilisateur.setDateCreation(LocalDateTime.now());
         utilisateurRepository.save(utilisateur);
 
-        // Créer la demande d'accès EN_ATTENTE
         DemandeAcces demande = new DemandeAcces();
         demande.setUtilisateur(utilisateur);
         demande.setDateDemande(LocalDateTime.now());
@@ -48,49 +46,72 @@ public class InscriptionService {
         String mdpHache = passwordEncoder.encode(req.getMotDePasse());
 
         switch (req.getTypeUtilisateur().toUpperCase()) {
+
+            case "UTILISATEUR_METIER" -> {
+                UtilisateurMetier um = new UtilisateurMetier();
+                um.setNom(req.getNom());
+                um.setPrenom(req.getPrenom());
+                um.setEmail(req.getEmail());
+                um.setMotDePasse(mdpHache);
+                um.setFonction(req.getFonction());
+                um.setDepartement(req.getDepartement());
+                // ✅ téléphone professionnel (telMetier ou telephone en fallback)
+                um.setTelephone(req.getTelephone());
+                // ✅ dateNomination supprimée du form — définie à l'activation
+                // um.setDateNomination(...)  → sera définie par l'admin
+                return um;
+            }
+
+            case "CIL" -> {
+                CIL c = new CIL();
+                c.setNom(req.getNom());
+                c.setPrenom(req.getPrenom());
+                c.setEmail(req.getEmail());
+                c.setMotDePasse(mdpHache);
+                c.setService(req.getService());
+                c.setNiveauResponsabilite(req.getNiveauResponsabilite());
+                // ✅ téléphone professionnel ajouté
+                c.setTelephone(req.getTelephone());
+                // ✅ fonction supprimée du form CIL
+                return c;
+            }
+
+            case "DPO" -> {
+                DPO d = new DPO();
+                d.setNom(req.getNom());
+                d.setPrenom(req.getPrenom());
+                d.setEmail(req.getEmail());
+                d.setMotDePasse(mdpHache);
+                d.setOrganisme(req.getOrganisme());
+                d.setAdresseProfessionnelle(req.getAdresseProfessionnelle());
+                // ✅ dateNomination supprimée du form — définie à l'activation
+                // d.setDateNomination(...)  → sera définie par l'admin
+                return d;
+            }
+
+            case "DG" -> {
+                DG dg = new DG();
+                dg.setNom(req.getNom());
+                dg.setPrenom(req.getPrenom());
+                dg.setEmail(req.getEmail());
+                dg.setMotDePasse(mdpHache);
+                // ✅ idDg supprimé — remplacé par téléphone professionnel
+                dg.setTelephone(req.getTelephone());
+                return dg;
+            }
+
             case "USAGER" -> {
                 Usager u = new Usager();
-                u.setNom(req.getNom()); u.setPrenom(req.getPrenom());
-                u.setEmail(req.getEmail()); u.setMotDePasse(mdpHache);
+                u.setNom(req.getNom());
+                u.setPrenom(req.getPrenom());
+                u.setEmail(req.getEmail());
+                u.setMotDePasse(mdpHache);
                 u.setTelephone(req.getTelephone());
                 u.setAdresse(req.getAdresse());
                 u.setMatricule(req.getMatricule());
                 return u;
             }
-            case "CIL" -> {
-                CIL c = new CIL();
-                c.setNom(req.getNom()); c.setPrenom(req.getPrenom());
-                c.setEmail(req.getEmail()); c.setMotDePasse(mdpHache);
-                c.setService(req.getService());
-                c.setFonction(req.getFonction());
-                c.setNiveauResponsabilite(req.getNiveauResponsabilite());
-                return c;
-            }
-            case "DPO" -> {
-                DPO d = new DPO();
-                d.setNom(req.getNom()); d.setPrenom(req.getPrenom());
-                d.setEmail(req.getEmail()); d.setMotDePasse(mdpHache);
-                d.setOrganisme(req.getOrganisme());
-                d.setAdresseProfessionnelle(req.getAdresseProfessionnelle());
-                d.setDateNomination(LocalDateTime.now());
-                return d;
-            }
-            case "DG" -> {
-                DG dg = new DG();
-                dg.setNom(req.getNom()); dg.setPrenom(req.getPrenom());
-                dg.setEmail(req.getEmail()); dg.setMotDePasse(mdpHache);
-                dg.setIdDg(req.getIdDg());
-                return dg;
-            }
-            case "UTILISATEUR_METIER" -> {
-                UtilisateurMetier um = new UtilisateurMetier();
-                um.setNom(req.getNom()); um.setPrenom(req.getPrenom());
-                um.setEmail(req.getEmail()); um.setMotDePasse(mdpHache);
-                um.setFonction(req.getFonction());
-                um.setTelephone(req.getTelephone());
-                um.setDateNomination(LocalDateTime.now());
-                return um;
-            }
+
             default -> throw new RuntimeException("Type utilisateur invalide : " + req.getTypeUtilisateur());
         }
     }

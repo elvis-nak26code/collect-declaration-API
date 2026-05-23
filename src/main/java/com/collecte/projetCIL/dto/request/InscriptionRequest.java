@@ -19,4 +19,5 @@ public class InscriptionRequest {
     private String fonction;
     private String niveauResponsabilite;
     private String idDg;
+    private String departement;
 }

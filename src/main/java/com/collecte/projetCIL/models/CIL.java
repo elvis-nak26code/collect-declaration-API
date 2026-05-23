@@ -30,4 +30,7 @@ public class CIL extends Utilisateur {
     // 1 CIL -> 0..* Declaration (verifie)
     @OneToMany(mappedBy = "cil", cascade = CascadeType.ALL)
     private List<Declaration> declarations;
+
+    @Column
+    private String telephone;
 }

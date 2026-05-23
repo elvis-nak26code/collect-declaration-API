@@ -1,13 +1,18 @@
 package com.collecte.projetCIL.models;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "utilisateur_metier")
@@ -24,6 +29,8 @@ public class UtilisateurMetier extends Utilisateur {
     private LocalDateTime dateNomination;
 
     private String telephone;
+
+    private String departement;
 
     // 1 UtilisateurMetier -> 0..* Traitement (gère)
     @OneToMany(mappedBy = "utilisateurMetier", cascade = CascadeType.ALL)
