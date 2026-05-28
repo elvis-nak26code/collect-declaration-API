@@ -37,6 +37,7 @@ public class InscriptionService {
         demande.setUtilisateur(utilisateur);
         demande.setDateDemande(LocalDateTime.now());
         demande.setStatutDemandeAcces(StatutDemandeAcces.EN_ATTENTE);
+        demande.setMotifDemande(request.getMotifDemande()); // ✅ ligne manquante
         demandeAccesRepository.save(demande);
 
         return new MessageResponse("Inscription envoyée. Votre compte sera activé après validation de l'administrateur.");

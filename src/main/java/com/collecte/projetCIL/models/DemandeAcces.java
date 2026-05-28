@@ -26,8 +26,12 @@ public class DemandeAcces {
     @Enumerated(EnumType.STRING)
     @Column(name = "statut_demande_acces")
     private StatutDemandeAcces statutDemandeAcces;
-
-    private String motif;
+    
+    @Column(name = "motif_demande")
+    private String motifDemande;
+    
+    @Column(name = "motif_rejet")
+    private String motifRejet;
 
     @Column(name = "date_validation")
     private LocalDateTime dateValidation;

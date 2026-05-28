@@ -20,4 +20,5 @@ public class InscriptionRequest {
     private String niveauResponsabilite;
     private String idDg;
     private String departement;
+    private String motifDemande; // Pour les demandes d'accès
 }

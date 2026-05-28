@@ -4,8 +4,7 @@ import com.collecte.projetCIL.dto.response.DemandeAccesResponse;
 import com.collecte.projetCIL.dto.response.MessageResponse;
 import com.collecte.projetCIL.enums.StatutDemandeAcces;
 import com.collecte.projetCIL.enums.StatutUtilisateur;
-import com.collecte.projetCIL.models.DemandeAcces;
-import com.collecte.projetCIL.models.Utilisateur;
+import com.collecte.projetCIL.models.*;
 import com.collecte.projetCIL.repository.DemandeAccesRepository;
 import com.collecte.projetCIL.repository.UtilisateurRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,19 +22,16 @@ public class DemandeAccesService {
     private final DemandeAccesRepository demandeAccesRepository;
     private final UtilisateurRepository utilisateurRepository;
 
-    // Lister toutes les demandes en attente
     public List<DemandeAccesResponse> listerEnAttente() {
         return demandeAccesRepository.findByStatutDemandeAcces(StatutDemandeAcces.EN_ATTENTE)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // Lister toutes les demandes (toutes statuts)
     public List<DemandeAccesResponse> listerToutes() {
         return demandeAccesRepository.findAll()
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // Valider une demande -> compte devient ACTIF
     @Transactional
     public MessageResponse valider(Long demandeId) {
         DemandeAcces demande = demandeAccesRepository.findById(demandeId)
@@ -45,12 +41,10 @@ public class DemandeAccesService {
             throw new RuntimeException("Cette demande a déjà été traitée.");
         }
 
-        // Activer le compte utilisateur
         Utilisateur utilisateur = demande.getUtilisateur();
         utilisateur.setStatutUtilisateur(StatutUtilisateur.ACTIF);
         utilisateurRepository.save(utilisateur);
 
-        // Mettre à jour la demande
         demande.setStatutDemandeAcces(StatutDemandeAcces.APPROUVEE);
         demande.setDateValidation(LocalDateTime.now());
         demandeAccesRepository.save(demande);
@@ -58,7 +52,6 @@ public class DemandeAccesService {
         return new MessageResponse("Compte de " + utilisateur.getEmail() + " activé avec succès.");
     }
 
-    // Rejeter une demande -> compte reste INACTIF
     @Transactional
     public MessageResponse rejeter(Long demandeId, String motif) {
         DemandeAcces demande = demandeAccesRepository.findById(demandeId)
@@ -68,14 +61,12 @@ public class DemandeAccesService {
             throw new RuntimeException("Cette demande a déjà été traitée.");
         }
 
-        // Marquer le compte comme suspendu
         Utilisateur utilisateur = demande.getUtilisateur();
         utilisateur.setStatutUtilisateur(StatutUtilisateur.SUSPENDU);
         utilisateurRepository.save(utilisateur);
 
-        // Mettre à jour la demande
         demande.setStatutDemandeAcces(StatutDemandeAcces.REJETEE);
-        demande.setMotif(motif);
+        demande.setMotifRejet(motif);
         demande.setDateValidation(LocalDateTime.now());
         demandeAccesRepository.save(demande);
 
@@ -84,18 +75,46 @@ public class DemandeAccesService {
 
     private DemandeAccesResponse toResponse(DemandeAcces d) {
         DemandeAccesResponse r = new DemandeAccesResponse();
-        r.setId(d.getIdDemande());
-        r.setStatut(d.getStatutDemandeAcces());
+
+        r.setIdDemande(d.getIdDemande());
+        r.setStatutDemandeAcces(d.getStatutDemandeAcces());
         r.setDateDemande(d.getDateDemande());
         r.setDateValidation(d.getDateValidation());
-        r.setMotif(d.getMotif());
-        if (d.getUtilisateur() != null) {
-            Utilisateur u = d.getUtilisateur();
-            r.setNomUtilisateur(u.getNom());
-            r.setPrenomUtilisateur(u.getPrenom());
-            r.setEmailUtilisateur(u.getEmail());
+        r.setMotif(d.getMotifDemande());
+
+        Utilisateur u = d.getUtilisateur();
+        if (u != null) {
+            r.setUtilisateurId(u.getId());
+            r.setNom(u.getNom());
+            r.setPrenom(u.getPrenom());
+            r.setEmail(u.getEmail());
+            r.setStatutUtilisateur(u.getStatutUtilisateur());
+            r.setDateCreationCompte(u.getDateCreation());
             r.setTypeUtilisateur(u.getClass().getSimpleName());
+
+            if (u instanceof Usager usager) {
+                r.setTelephone(usager.getTelephone());
+                r.setVille(extraireVille(usager.getAdresse()));
+            } else if (u instanceof DPO dpo) {
+                r.setOrganisme(dpo.getOrganisme());
+                r.setVille(extraireVille(dpo.getAdresseProfessionnelle()));
+            } else if (u instanceof UtilisateurMetier metier) {
+                r.setTelephone(metier.getTelephone());
+                r.setFonction(metier.getFonction());
+            }
         }
+
+        if (d.getAdministrateur() != null) {
+            Administrateur admin = d.getAdministrateur();
+            r.setAdminTraitantNom(admin.getPrenom() + " " + admin.getNom());
+        }
+
         return r;
+    }
+
+    private String extraireVille(String adresse) {
+        if (adresse == null || adresse.isBlank()) return null;
+        String[] parties = adresse.split(",");
+        return parties[parties.length - 1].trim();
     }
 }
