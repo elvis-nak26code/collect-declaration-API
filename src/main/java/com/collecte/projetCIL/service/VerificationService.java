@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.collecte.projetCIL.enums.StatutUtilisateur;
 import com.collecte.projetCIL.models.Administrateur;
 import com.collecte.projetCIL.models.CIL;
 import com.collecte.projetCIL.models.DG;
@@ -25,7 +26,7 @@ public class VerificationService {
 
     public Map<String, String> getFonctionByEmail(String email) {
 
-        // ── 1. Administrateur ──────────────────────────────────────────
+        // ── 1. Administrateur — pas de vérification de statut ──────────
         var adminOpt = administrateurRepository.findByEmail(email);
         if (adminOpt.isPresent()) {
             Administrateur a = adminOpt.get();
@@ -33,7 +34,8 @@ public class VerificationService {
                 "type",     "ADMINISTRATEUR",
                 "email",    a.getEmail(),
                 "nom",      a.getNom() + " " + a.getPrenom(),
-                "fonction", a.getFonction() != null ? a.getFonction() : "Non renseignée"
+                "fonction", a.getFonction() != null ? a.getFonction() : "Non renseignée",
+                "actif",    "true"
             );
         }
 
@@ -44,15 +46,20 @@ public class VerificationService {
         }
 
         Utilisateur u = userOpt.get();
+
+        // "actif" = true uniquement si ACTIF, false pour tout autre statut
+        boolean estActif = StatutUtilisateur.ACTIF.equals(u.getStatutUtilisateur());
+
         Map<String, String> result = new HashMap<>();
         result.put("email", u.getEmail());
         result.put("nom",   u.getNom() + " " + u.getPrenom());
+        result.put("actif", String.valueOf(estActif));   // ← "true" ou "false"
 
         // Sous-classe UtilisateurMetier
         if (u instanceof UtilisateurMetier metier) {
-            result.put("type",        "UTILISATEUR_METIER");
-            result.put("fonction",    metier.getFonction() != null ? metier.getFonction() : "Non renseignée");
-            result.put("telephone",   metier.getTelephone() != null ? metier.getTelephone() : "");
+            result.put("type",      "UTILISATEUR_METIER");
+            result.put("fonction",  metier.getFonction() != null ? metier.getFonction() : "Non renseignée");
+            result.put("telephone", metier.getTelephone() != null ? metier.getTelephone() : "");
             return result;
         }
 
@@ -83,7 +90,7 @@ public class VerificationService {
             return result;
         }
 
-        // Utilisateur de base (aucune sous-classe connue)
+        // Utilisateur de base
         result.put("type",     "UTILISATEUR");
         result.put("fonction", "Non définie");
         return result;

@@ -1,6 +1,5 @@
 package com.collecte.projetCIL.security;
 
-import com.collecte.projetCIL.enums.StatutUtilisateur;
 import com.collecte.projetCIL.models.Administrateur;
 import com.collecte.projetCIL.models.Utilisateur;
 import com.collecte.projetCIL.repository.AdministrateurRepository;
@@ -27,12 +26,8 @@ public class CustomUserDetailsService implements UserDetailsService {
         Optional<Utilisateur> utilisateur = utilisateurRepository.findByEmail(email);
         if (utilisateur.isPresent()) {
             Utilisateur u = utilisateur.get();
-
-            // Bloquer si compte pas encore validé
-            if (u.getStatutUtilisateur() != StatutUtilisateur.ACTIF) {
-                throw new UsernameNotFoundException("Compte non activé. Veuillez attendre la validation de l'administrateur.");
-            }
-
+            // On ne bloque plus ici — le statut est retourné dans /api/verification/fonction
+            // et c'est le frontend qui redirige selon actif=true/false
             String role = "ROLE_" + u.getClass().getSimpleName().toUpperCase();
             return new User(u.getEmail(), u.getMotDePasse(),
                     List.of(new SimpleGrantedAuthority(role)));

@@ -1,14 +1,27 @@
 package com.collecte.projetCIL.models;
 
-import com.collecte.projetCIL.enums.Permission;
-import com.collecte.projetCIL.enums.StatutUtilisateur;
-import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.collecte.projetCIL.enums.Permission;
+import com.collecte.projetCIL.enums.StatutUtilisateur;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "utilisateur")
@@ -38,6 +51,9 @@ public class Utilisateur {
 
     @Column(name = "date_creation")
     private LocalDateTime dateCreation;
+
+    @Column(name = "dernier_acces")          // ← nouveau champ pour lastLogin
+    private LocalDateTime dernierAcces;
 
     // 1 Utilisateur -> 0..1 DemandeAcces
     @OneToOne(mappedBy = "utilisateur", cascade = CascadeType.ALL)

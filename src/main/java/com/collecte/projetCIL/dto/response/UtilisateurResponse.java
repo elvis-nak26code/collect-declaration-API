@@ -1,10 +1,13 @@
+
 package com.collecte.projetCIL.dto.response;
-
-import com.collecte.projetCIL.enums.StatutUtilisateur;
-import lombok.Data;
-
+ 
 import java.time.LocalDateTime;
 
+import com.collecte.projetCIL.enums.StatutDemandeAcces;
+import com.collecte.projetCIL.enums.StatutUtilisateur;
+
+import lombok.Data;
+ 
 @Data
 public class UtilisateurResponse {
     private Long id;
@@ -14,4 +17,6 @@ public class UtilisateurResponse {
     private StatutUtilisateur statutUtilisateur;
     private String typeUtilisateur;
     private LocalDateTime dateCreation;
+    private LocalDateTime dernierAcces;       // ← pour lastLogin dans le frontend
+    private StatutDemandeAcces statutDemandeAcces; // ← pour filtrer côté frontend
 }
