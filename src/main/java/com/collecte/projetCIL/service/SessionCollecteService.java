@@ -8,8 +8,10 @@ import com.collecte.projetCIL.models.SessionCollecte;
 import com.collecte.projetCIL.repository.DPORepository;
 import com.collecte.projetCIL.repository.SessionCollecteRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,16 +27,19 @@ public class SessionCollecteService {
     // ------------------------------------------------------------------ //
     public SessionCollecteResponse creerSession(SessionCollecteRequest request) {
 
-        DPO dpo = dpoRepository.findById(request.getDpoId())
-                .orElseThrow(() -> new RuntimeException("DPO introuvable avec l'id : " + request.getDpoId()));
+        // Récupérer l'email du DPO connecté depuis le token JWT
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        DPO dpo = dpoRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("DPO introuvable : " + email));
 
         SessionCollecte session = new SessionCollecte();
-        session.setDateDebut(request.getDateDebut());
-        session.setDateFin(request.getDateFin());
+        session.setDateDebut(LocalDateTime.now());  // date de création automatique
+        session.setDateFin(null);                    // sera renseignée à la clôture
         session.setTypeCollecte(request.getTypeCollecte());
         session.setLieu(request.getLieu());
         session.setDescription(request.getDescription());
-        session.setStatutSession(StatutSession.EN_COURS);   // statut initial automatique
+        session.setStatutSession(StatutSession.EN_COURS);
         session.setDpo(dpo);
 
         SessionCollecte saved = sessionCollecteRepository.save(session);
@@ -62,11 +67,18 @@ public class SessionCollecteService {
 
     // ------------------------------------------------------------------ //
     //  Mettre à jour le statut d'une session (EN_COURS -> TERMINEE / ANNULEE)
+    //  Si le nouveau statut est TERMINEE, on enregistre la date de fin
     // ------------------------------------------------------------------ //
     public SessionCollecteResponse changerStatut(Long id, StatutSession nouveauStatut) {
         SessionCollecte session = sessionCollecteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Session introuvable avec l'id : " + id));
+
         session.setStatutSession(nouveauStatut);
+
+        if (nouveauStatut == StatutSession.TERMINEE) {
+            session.setDateFin(LocalDateTime.now()); // date de clôture automatique
+        }
+
         return toResponse(sessionCollecteRepository.save(session));
     }
 

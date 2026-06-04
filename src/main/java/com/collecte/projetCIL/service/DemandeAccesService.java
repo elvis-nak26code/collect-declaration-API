@@ -5,8 +5,7 @@ import com.collecte.projetCIL.dto.response.MessageResponse;
 import com.collecte.projetCIL.enums.StatutDemandeAcces;
 import com.collecte.projetCIL.enums.StatutUtilisateur;
 import com.collecte.projetCIL.models.*;
-import com.collecte.projetCIL.repository.DemandeAccesRepository;
-import com.collecte.projetCIL.repository.UtilisateurRepository;
+import com.collecte.projetCIL.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +20,13 @@ public class DemandeAccesService {
 
     private final DemandeAccesRepository demandeAccesRepository;
     private final UtilisateurRepository utilisateurRepository;
+
+    // Repositories spécifiques pour préserver les tables enfants JPA
+    private final DPORepository dpoRepository;
+    private final CILRepository cilRepository;
+    private final DGRepository dgRepository;
+    private final UtilisateurMetierRepository utilisateurMetierRepository;
+    private final UsagerRepository usagerRepository;
 
     public List<DemandeAccesResponse> listerEnAttente() {
         return demandeAccesRepository.findByStatutDemandeAcces(StatutDemandeAcces.EN_ATTENTE)
@@ -43,7 +49,7 @@ public class DemandeAccesService {
 
         Utilisateur utilisateur = demande.getUtilisateur();
         utilisateur.setStatutUtilisateur(StatutUtilisateur.ACTIF);
-        utilisateurRepository.save(utilisateur);
+        sauvegarderUtilisateur(utilisateur);
 
         demande.setStatutDemandeAcces(StatutDemandeAcces.APPROUVEE);
         demande.setDateValidation(LocalDateTime.now());
@@ -63,7 +69,7 @@ public class DemandeAccesService {
 
         Utilisateur utilisateur = demande.getUtilisateur();
         utilisateur.setStatutUtilisateur(StatutUtilisateur.SUSPENDU);
-        utilisateurRepository.save(utilisateur);
+        sauvegarderUtilisateur(utilisateur);
 
         demande.setStatutDemandeAcces(StatutDemandeAcces.REJETEE);
         demande.setMotifRejet(motif);
@@ -71,6 +77,19 @@ public class DemandeAccesService {
         demandeAccesRepository.save(demande);
 
         return new MessageResponse("Demande de " + utilisateur.getEmail() + " rejetée.");
+    }
+
+    /**
+     * Sauvegarde via le repository du sous-type réel.
+     * Évite que utilisateurRepository.save() écrase/ignore la table enfant (dpo, cil, etc.)
+     */
+    private void sauvegarderUtilisateur(Utilisateur utilisateur) {
+        if (utilisateur instanceof DPO d)                { dpoRepository.save(d); return; }
+        if (utilisateur instanceof CIL c)                { cilRepository.save(c); return; }
+        if (utilisateur instanceof DG dg)                { dgRepository.save(dg); return; }
+        if (utilisateur instanceof UtilisateurMetier um) { utilisateurMetierRepository.save(um); return; }
+        if (utilisateur instanceof Usager u)             { usagerRepository.save(u); return; }
+        utilisateurRepository.save(utilisateur);
     }
 
     private DemandeAccesResponse toResponse(DemandeAcces d) {

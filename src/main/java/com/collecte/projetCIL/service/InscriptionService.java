@@ -21,6 +21,13 @@ public class InscriptionService {
     private final DemandeAccesRepository demandeAccesRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // Repositories spécifiques pour garantir l'insert dans les tables enfants
+    private final DPORepository dpoRepository;
+    private final CILRepository cilRepository;
+    private final DGRepository dgRepository;
+    private final UtilisateurMetierRepository utilisateurMetierRepository;
+    private final UsagerRepository usagerRepository;
+
     @Transactional
     public MessageResponse inscrire(InscriptionRequest request) {
 
@@ -31,16 +38,28 @@ public class InscriptionService {
         Utilisateur utilisateur = creerUtilisateur(request);
         utilisateur.setStatutUtilisateur(StatutUtilisateur.INACTIF);
         utilisateur.setDateCreation(LocalDateTime.now());
-        utilisateurRepository.save(utilisateur);
+
+        // Sauvegarder via le bon repository selon le type réel
+        Utilisateur saved = sauvegarderUtilisateur(utilisateur);
 
         DemandeAcces demande = new DemandeAcces();
-        demande.setUtilisateur(utilisateur);
+        demande.setUtilisateur(saved);
         demande.setDateDemande(LocalDateTime.now());
         demande.setStatutDemandeAcces(StatutDemandeAcces.EN_ATTENTE);
-        demande.setMotifDemande(request.getMotifDemande()); // ✅ ligne manquante
+        demande.setMotifDemande(request.getMotifDemande());
         demandeAccesRepository.save(demande);
 
         return new MessageResponse("Inscription envoyée. Votre compte sera activé après validation de l'administrateur.");
+    }
+
+    // Sauvegarde via le repository spécifique → insert dans la bonne table enfant
+    private Utilisateur sauvegarderUtilisateur(Utilisateur utilisateur) {
+        if (utilisateur instanceof DPO d)                   return dpoRepository.save(d);
+        if (utilisateur instanceof CIL c)                   return cilRepository.save(c);
+        if (utilisateur instanceof DG dg)                   return dgRepository.save(dg);
+        if (utilisateur instanceof UtilisateurMetier um)    return utilisateurMetierRepository.save(um);
+        if (utilisateur instanceof Usager u)                return usagerRepository.save(u);
+        return utilisateurRepository.save(utilisateur);
     }
 
     private Utilisateur creerUtilisateur(InscriptionRequest req) {
@@ -56,10 +75,7 @@ public class InscriptionService {
                 um.setMotDePasse(mdpHache);
                 um.setFonction(req.getFonction());
                 um.setDepartement(req.getDepartement());
-                // ✅ téléphone professionnel (telMetier ou telephone en fallback)
                 um.setTelephone(req.getTelephone());
-                // ✅ dateNomination supprimée du form — définie à l'activation
-                // um.setDateNomination(...)  → sera définie par l'admin
                 return um;
             }
 
@@ -71,9 +87,7 @@ public class InscriptionService {
                 c.setMotDePasse(mdpHache);
                 c.setService(req.getService());
                 c.setNiveauResponsabilite(req.getNiveauResponsabilite());
-                // ✅ téléphone professionnel ajouté
                 c.setTelephone(req.getTelephone());
-                // ✅ fonction supprimée du form CIL
                 return c;
             }
 
@@ -85,8 +99,6 @@ public class InscriptionService {
                 d.setMotDePasse(mdpHache);
                 d.setOrganisme(req.getOrganisme());
                 d.setAdresseProfessionnelle(req.getAdresseProfessionnelle());
-                // ✅ dateNomination supprimée du form — définie à l'activation
-                // d.setDateNomination(...)  → sera définie par l'admin
                 return d;
             }
 
@@ -96,7 +108,6 @@ public class InscriptionService {
                 dg.setPrenom(req.getPrenom());
                 dg.setEmail(req.getEmail());
                 dg.setMotDePasse(mdpHache);
-                // ✅ idDg supprimé — remplacé par téléphone professionnel
                 dg.setTelephone(req.getTelephone());
                 return dg;
             }
