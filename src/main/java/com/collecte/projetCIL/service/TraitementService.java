@@ -1,31 +1,46 @@
 package com.collecte.projetCIL.service;
 
-import com.collecte.projetCIL.dto.request.TraitementRequest;
-import com.collecte.projetCIL.dto.response.TraitementResponse;
-import com.collecte.projetCIL.models.SessionCollecte;
-import com.collecte.projetCIL.models.Traitement;
-import com.collecte.projetCIL.models.UtilisateurMetier;
-import com.collecte.projetCIL.repository.SessionCollecteRepository;
-import com.collecte.projetCIL.repository.TraitementRepository;
-import com.collecte.projetCIL.repository.UtilisateurMetierRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.collecte.projetCIL.dto.request.TraitementRequest;
+import com.collecte.projetCIL.dto.response.TraitementResponse;
+import com.collecte.projetCIL.enums.ModuleConserne;
+import com.collecte.projetCIL.enums.ResultatAction;
+import com.collecte.projetCIL.enums.TypeAction;
+import com.collecte.projetCIL.enums.TypeNotification;
+import com.collecte.projetCIL.models.DPO;
+import com.collecte.projetCIL.models.SessionCollecte;
+import com.collecte.projetCIL.models.Traitement;
+import com.collecte.projetCIL.models.UtilisateurMetier;
+import com.collecte.projetCIL.repository.DPORepository;
+import com.collecte.projetCIL.repository.SessionCollecteRepository;
+import com.collecte.projetCIL.repository.TraitementRepository;
+import com.collecte.projetCIL.repository.UtilisateurMetierRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class TraitementService {
 
-    private final TraitementRepository traitementRepository;
-    private final SessionCollecteRepository sessionCollecteRepository;
-    private final UtilisateurMetierRepository utilisateurMetierRepository;
+    private final TraitementRepository           traitementRepository;
+    private final SessionCollecteRepository      sessionCollecteRepository;
+    private final UtilisateurMetierRepository    utilisateurMetierRepository;
+    private final DPORepository                  dpoRepository;
+    private final JournalAuditService            journalAuditService;
+    private final NotificationService            notificationService;
 
     // ------------------------------------------------------------------ //
     //  Créer un traitement rattaché à une session de collecte
+    //  → Journal d'audit pour l'UtilisateurMetier
+    //  → Notification au DPO rattaché à la session
     // ------------------------------------------------------------------ //
+    @Transactional
     public TraitementResponse creerTraitement(TraitementRequest request) {
 
         SessionCollecte session = sessionCollecteRepository.findById(request.getSessionCollecteId())
@@ -42,11 +57,25 @@ public class TraitementService {
         traitement.setDureeConservation(request.getDureeConservation());
         traitement.setDateCreation(LocalDateTime.now());
         traitement.setDateFin(request.getDateFin());
-        traitement.setNombreDonnee(0L);                // initialisation à 0
+        traitement.setNombreDonnee(0L);
         traitement.setSessionCollecte(session);
         traitement.setUtilisateurMetier(utilisateurMetier);
 
         Traitement saved = traitementRepository.save(traitement);
+
+        // Journal d'audit — action CREATION module DECLARATION pour l'utilisateur métier
+        journalAuditService.enregistrer(utilisateurMetier, TypeAction.CREATION,
+                ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        // Notifier le DPO lié à la session
+        DPO dpo = session.getDpo();
+        if (dpo != null) {
+            notificationService.envoyer(dpo, TypeNotification.ALERTE,
+                    "Un nouveau traitement « " + saved.getDescription() +
+                    " » a été créé par " + utilisateurMetier.getPrenom() + " " + utilisateurMetier.getNom() +
+                    " dans la session #" + session.getIdSession() + ".");
+        }
+
         return toResponse(saved);
     }
 
@@ -72,7 +101,7 @@ public class TraitementService {
     }
 
     // ------------------------------------------------------------------ //
-    //  Méthode interne : incrémenter le compteur de données d'un traitement
+    //  Incrémenter le compteur de données d'un traitement
     //  (appelée par DonneePersonnelleService après chaque ajout)
     // ------------------------------------------------------------------ //
     public void incrementerNombreDonnee(Long traitementId, long quantite) {
