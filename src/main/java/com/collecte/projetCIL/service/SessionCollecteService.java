@@ -34,6 +34,7 @@ public class SessionCollecteService {
                 .orElseThrow(() -> new RuntimeException("DPO introuvable : " + email));
 
         SessionCollecte session = new SessionCollecte();
+        session.setNomSession(request.getNomSession());
         session.setDateDebut(LocalDateTime.now());  // date de création automatique
         session.setDateFin(null);                    // sera renseignée à la clôture
         session.setTypeCollecte(request.getTypeCollecte());
@@ -91,16 +92,17 @@ public class SessionCollecteService {
                 ? s.getDpo().getPrenom() + " " + s.getDpo().getNom()
                 : null;
         return new SessionCollecteResponse(
-                s.getIdSession(),
-                s.getDateDebut(),
-                s.getDateFin(),
-                s.getStatutSession(),
-                s.getTypeCollecte(),
-                s.getLieu(),
-                s.getDescription(),
-                s.getDpo() != null ? s.getDpo().getId() : null,
-                nomDpo,
-                nbTraitements
-        );
+            s.getIdSession(),
+            s.getNomSession(),
+            s.getDateDebut(),
+            s.getDateFin(),
+            s.getStatutSession(),
+            s.getTypeCollecte(),
+            s.getLieu(),
+            s.getDescription(),
+            s.getDpo() != null ? s.getDpo().getId() : null,
+            nomDpo,
+            nbTraitements
+);
     }
 }

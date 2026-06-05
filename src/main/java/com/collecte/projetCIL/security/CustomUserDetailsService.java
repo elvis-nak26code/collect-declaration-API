@@ -18,6 +18,7 @@ import com.collecte.projetCIL.repository.DPORepository;
 import com.collecte.projetCIL.repository.DGRepository;
 import com.collecte.projetCIL.repository.UsagerRepository;
 import com.collecte.projetCIL.repository.UtilisateurRepository;
+import com.collecte.projetCIL.repository.UtilisateurMetierRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,12 +26,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final UtilisateurRepository    utilisateurRepository;
-    private final AdministrateurRepository administrateurRepository;
-    private final DPORepository            dpoRepository;
-    private final CILRepository            cilRepository;
-    private final DGRepository             dgRepository;
-    private final UsagerRepository         usagerRepository;
+    private final UtilisateurRepository         utilisateurRepository;
+    private final AdministrateurRepository      administrateurRepository;
+    private final DPORepository                 dpoRepository;
+    private final CILRepository                 cilRepository;
+    private final DGRepository                  dgRepository;
+    private final UsagerRepository              usagerRepository;
+    private final UtilisateurMetierRepository   utilisateurMetierRepository; // ← ajouter
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -67,7 +69,15 @@ public class CustomUserDetailsService implements UserDetailsService {
                     List.of(new SimpleGrantedAuthority("ROLE_DG")));
         }
 
-        // 5. Usager
+        // 5. UtilisateurMetier  ← nouveau cas
+        if (utilisateurMetierRepository.findByEmail(email).isPresent()) {
+            Utilisateur u = utilisateurRepository.findByEmail(email)
+                    .orElseThrow(() -> new UsernameNotFoundException("Introuvable : " + email));
+            return new User(u.getEmail(), u.getMotDePasse(),
+                    List.of(new SimpleGrantedAuthority("ROLE_METIER")));
+        }
+
+        // 6. Usager
         if (usagerRepository.findByEmail(email).isPresent()) {
             Utilisateur u = utilisateurRepository.findByEmail(email)
                     .orElseThrow(() -> new UsernameNotFoundException("Introuvable : " + email));

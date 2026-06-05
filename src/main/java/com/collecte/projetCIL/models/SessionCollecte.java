@@ -37,6 +37,9 @@ public class SessionCollecte {
     @Column(name = "date_debut")
     private LocalDateTime dateDebut;
 
+    @Column(name = "nom_session")
+    private String nomSession;
+
     @Column(name = "date_fin")
     private LocalDateTime dateFin;
 

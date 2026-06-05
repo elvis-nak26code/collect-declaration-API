@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class SessionCollecteRequest {
-
+    private String nomSession;
     private LocalDateTime dateDebut;
     private LocalDateTime dateFin;
     private TypeCollecte typeCollecte;   // EN_LIGNE | TERRAIN

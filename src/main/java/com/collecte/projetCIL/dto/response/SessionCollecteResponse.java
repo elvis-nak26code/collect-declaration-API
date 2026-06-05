@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class SessionCollecteResponse {
 
     private Long idSession;
+    private String nomSession;
     private LocalDateTime dateDebut;
     private LocalDateTime dateFin;
     private StatutSession statutSession;
