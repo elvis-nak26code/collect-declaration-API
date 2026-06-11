@@ -1,12 +1,18 @@
 package com.collecte.projetCIL.models;
 
-import com.collecte.projetCIL.enums.StatutSession;
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "traitement")
@@ -24,6 +30,9 @@ public class Traitement {
     private String description;
     private String texte;
 
+    @Column(name = "nom", nullable = false)
+    private String nom;
+
     @Column(name = "certification_securite")
     private String certificationSecurite;
 
@@ -39,12 +48,10 @@ public class Traitement {
     @Column(name = "nombre_donnee")
     private Long nombreDonnee;
 
-    // ManyToOne UtilisateurMetier (gère)
     @ManyToOne
     @JoinColumn(name = "utilisateur_metier_id")
     private UtilisateurMetier utilisateurMetier;
 
-    // ManyToOne SessionCollecte (regroupe)
     @ManyToOne
     @JoinColumn(name = "session_collecte_id")
     private SessionCollecte sessionCollecte;

@@ -45,7 +45,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMINISTRATEUR')")
+@PreAuthorize("hasAuthority('ROLE_ADMINISTRATEUR')")
 public class AdminController {
 
     private final DemandeAccesService  demandeAccesService;

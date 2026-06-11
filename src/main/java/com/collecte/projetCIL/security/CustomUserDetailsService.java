@@ -69,12 +69,12 @@ public class CustomUserDetailsService implements UserDetailsService {
                     List.of(new SimpleGrantedAuthority("ROLE_DG")));
         }
 
-        // 5. UtilisateurMetier  ← nouveau cas
+        // 5. UtilisateurMetier
         if (utilisateurMetierRepository.findByEmail(email).isPresent()) {
             Utilisateur u = utilisateurRepository.findByEmail(email)
                     .orElseThrow(() -> new UsernameNotFoundException("Introuvable : " + email));
             return new User(u.getEmail(), u.getMotDePasse(),
-                    List.of(new SimpleGrantedAuthority("ROLE_METIER")));
+                    List.of(new SimpleGrantedAuthority("ROLE_UTILISATEUR_METIER")));
         }
 
         // 6. Usager

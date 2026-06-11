@@ -40,7 +40,7 @@ public class DeclarationController {
     // ================================================================== //
 
     @PostMapping("/normale")
-    @PreAuthorize("hasRole('DPO')")
+    @PreAuthorize("hasAuthority('ROLE_DPO')")
     public ResponseEntity<DeclarationResponse> creerNormale(
             @RequestBody DeclarationNormaleRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -48,7 +48,7 @@ public class DeclarationController {
     }
 
     @PostMapping("/collecte-site")
-    @PreAuthorize("hasRole('DPO')")
+    @PreAuthorize("hasAuthority('ROLE_DPO')")
     public ResponseEntity<DeclarationResponse> creerCollecteSite(
             @RequestBody DeclarationCollecteSiteInternetRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -56,7 +56,7 @@ public class DeclarationController {
     }
 
     @PostMapping("/video-surveillance")
-    @PreAuthorize("hasRole('DPO')")
+    @PreAuthorize("hasAuthority('ROLE_DPO')")
     public ResponseEntity<DeclarationResponse> creerVideoSurveillance(
             @RequestBody DeclarationVideoSurveillanceRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -64,7 +64,7 @@ public class DeclarationController {
     }
 
     @PostMapping("/autorisation")
-    @PreAuthorize("hasRole('DPO')")
+    @PreAuthorize("hasAuthority('ROLE_DPO')")
     public ResponseEntity<DeclarationResponse> creerAutorisation(
             @RequestBody DeclarationAutorisationRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -77,7 +77,7 @@ public class DeclarationController {
 
     /** Le DPO voit ses propres déclarations — l'ID est déduit du token. */
     @GetMapping("/mes-declarations")
-    @PreAuthorize("hasRole('DPO')")
+    @PreAuthorize("hasAuthority('ROLE_DPO')")
     public ResponseEntity<List<DeclarationResponse>> mesDeclarations(
             @RequestParam Long dpoId) {
         return ResponseEntity.ok(declarationService.listerParDpo(dpoId));
@@ -85,14 +85,14 @@ public class DeclarationController {
 
     /** La DG voit toutes les déclarations EN_ATTENTE de validation. */
     @GetMapping("/en-attente")
-    @PreAuthorize("hasAnyRole('DG', 'ADMINISTRATEUR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_DG','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<List<DeclarationResponse>> declarationsEnAttente() {
         return ResponseEntity.ok(declarationService.listerEnAttente());
     }
 
     /** Détail d'une déclaration — accessible au DPO, DG et CIL. */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('DPO', 'DG', 'CIL', 'ADMINISTRATEUR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_DG','ROLE_CIL','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<DeclarationResponse> getDeclaration(@PathVariable Long id) {
         return ResponseEntity.ok(declarationService.getById(id));
     }
@@ -102,7 +102,7 @@ public class DeclarationController {
     // ================================================================== //
 
     @PutMapping("/{id}/valider")
-    @PreAuthorize("hasRole('DG')")
+    @PreAuthorize("hasAuthority('ROLE_DG')")
     public ResponseEntity<DeclarationResponse> valider(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -110,7 +110,7 @@ public class DeclarationController {
     }
 
     @PutMapping("/{id}/rejeter")
-    @PreAuthorize("hasRole('DG')")
+    @PreAuthorize("hasAuthority('ROLE_DG')")
     public ResponseEntity<DeclarationResponse> rejeter(
             @PathVariable Long id,
             @RequestBody Map<String, String> body,

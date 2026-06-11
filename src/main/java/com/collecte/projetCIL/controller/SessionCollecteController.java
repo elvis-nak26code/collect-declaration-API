@@ -21,7 +21,7 @@ public class SessionCollecteController {
     // POST /api/sessions
     // Créer une nouvelle session de collecte (réservé DPO ou ADMIN)
     @PostMapping
-    // @PreAuthorize("hasAnyRole('DPO', 'ADMINISTRATEUR')")
+    // @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<SessionCollecteResponse> creerSession(
             @RequestBody SessionCollecteRequest request) {
         return ResponseEntity.ok(sessionCollecteService.creerSession(request));
@@ -44,7 +44,7 @@ public class SessionCollecteController {
     // PATCH /api/sessions/{id}/statut?valeur=TERMINEE
     // Changer le statut d'une session
     @PatchMapping("/{id}/statut")
-    @PreAuthorize("hasAnyRole('DPO', 'ADMINISTRATEUR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<SessionCollecteResponse> changerStatut(
             @PathVariable Long id,
             @RequestParam StatutSession valeur) {

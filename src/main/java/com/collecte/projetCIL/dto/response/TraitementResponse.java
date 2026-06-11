@@ -1,10 +1,10 @@
 package com.collecte.projetCIL.dto.response;
 
+import java.time.LocalDateTime;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -23,4 +23,7 @@ public class TraitementResponse {
     private Long sessionCollecteId;
     private Long utilisateurMetierId;
     private String utilisateurMetierNom;
+
+    // ID de la déclaration auto-créée (utile pour le frontend)
+    private Long declarationId;
 }

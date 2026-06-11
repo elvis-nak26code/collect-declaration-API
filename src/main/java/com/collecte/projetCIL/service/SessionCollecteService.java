@@ -44,8 +44,8 @@ public class SessionCollecteService {
 
         SessionCollecte session = new SessionCollecte();
         session.setNomSession(request.getNomSession());
-        session.setDateDebut(LocalDateTime.now());
-        session.setDateFin(null);
+        session.setDateDebut(request.getDateDebut() != null ? request.getDateDebut() : LocalDateTime.now());
+        session.setDateFin(request.getDateFin());
         session.setTypeCollecte(request.getTypeCollecte());
         session.setLieu(request.getLieu());
         session.setDescription(request.getDescription());

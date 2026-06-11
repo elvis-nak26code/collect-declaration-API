@@ -19,7 +19,7 @@ public class JournalAudit {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_journal")
+    @Column(name = "id_journal", columnDefinition = "bigserial")
     private Long idJournal;
 
     @Column(name = "date_action")
@@ -37,7 +37,6 @@ public class JournalAudit {
     @Column(name = "resultat_action")
     private ResultatAction resultatAction;
 
-    // ManyToOne Utilisateur (a)
     @ManyToOne
     @JoinColumn(name = "utilisateur_id")
     private Utilisateur utilisateur;

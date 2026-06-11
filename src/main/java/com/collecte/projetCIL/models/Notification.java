@@ -18,7 +18,7 @@ public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_notification")
+    @Column(name = "id_notification", columnDefinition = "bigserial")
     private Long idNotification;
 
     @Column(name = "date_envoi")
@@ -36,7 +36,6 @@ public class Notification {
     @Column(name = "date_echeance")
     private LocalDate dateEcheance;
 
-    // ManyToOne Utilisateur (reçoit)
     @ManyToOne
     @JoinColumn(name = "utilisateur_id")
     private Utilisateur utilisateur;
