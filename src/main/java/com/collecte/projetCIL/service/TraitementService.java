@@ -17,9 +17,9 @@ import com.collecte.projetCIL.dto.response.TraitementResponse;
 import com.collecte.projetCIL.enums.ModuleConserne;
 import com.collecte.projetCIL.enums.ResultatAction;
 import com.collecte.projetCIL.enums.StatutDeclaration;
+import com.collecte.projetCIL.enums.StatutTraitement;
 import com.collecte.projetCIL.enums.TypeAction;
 import com.collecte.projetCIL.enums.TypeNotification;
-import com.collecte.projetCIL.enums.StatutTraitement;
 import com.collecte.projetCIL.models.DPO;
 import com.collecte.projetCIL.models.DeclarationAutorisation;
 import com.collecte.projetCIL.models.DeclarationCollecteSiteInternet;
@@ -367,6 +367,30 @@ public class TraitementService {
         traitement.setStatut(nouveauStatut);
         traitementRepository.save(traitement);
         return toResponse(traitement, null);
+    }
+
+
+    // ------------------------------------------------------------------ //
+    //  Lister tous les traitements (dashboard DPO global)
+    // ------------------------------------------------------------------ //
+    public List<TraitementResponse> listerTous() {
+        return traitementRepository.findAll()
+                .stream()
+                .map(t -> toResponse(t, null))
+                .collect(Collectors.toList());
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Lister les traitements des sessions d'un DPO spécifique
+    // ------------------------------------------------------------------ //
+    public List<TraitementResponse> listerParDpo(Long dpoId) {
+        return traitementRepository.findAll()
+                .stream()
+                .filter(t -> t.getSessionCollecte() != null
+                        && t.getSessionCollecte().getDpo() != null
+                        && t.getSessionCollecte().getDpo().getId().equals(dpoId))
+                .map(t -> toResponse(t, null))
+                .collect(Collectors.toList());
     }
 
 }

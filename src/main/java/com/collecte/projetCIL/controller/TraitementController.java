@@ -109,4 +109,19 @@ public class TraitementController {
         return ResponseEntity.ok(traitementService.updateStatut(id, statut));
     }
 
+
+    // GET /api/traitements — tous les traitements (DPO / Admin)
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<List<TraitementResponse>> listerTous() {
+        return ResponseEntity.ok(traitementService.listerTous());
+    }
+
+    // GET /api/traitements/dpo/{dpoId} — traitements des sessions du DPO
+    @GetMapping("/dpo/{dpoId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<List<TraitementResponse>> listerParDpo(@PathVariable Long dpoId) {
+        return ResponseEntity.ok(traitementService.listerParDpo(dpoId));
+    }
+
 }
