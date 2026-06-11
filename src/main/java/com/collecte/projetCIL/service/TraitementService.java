@@ -19,6 +19,7 @@ import com.collecte.projetCIL.enums.ResultatAction;
 import com.collecte.projetCIL.enums.StatutDeclaration;
 import com.collecte.projetCIL.enums.TypeAction;
 import com.collecte.projetCIL.enums.TypeNotification;
+import com.collecte.projetCIL.enums.StatutTraitement;
 import com.collecte.projetCIL.models.DPO;
 import com.collecte.projetCIL.models.DeclarationAutorisation;
 import com.collecte.projetCIL.models.DeclarationCollecteSiteInternet;
@@ -75,6 +76,7 @@ public class TraitementService {
         traitement.setDateCreation(LocalDateTime.now());
         traitement.setDateFin(request.getDateFin());
         traitement.setNombreDonnee(0L);
+        traitement.setStatut(StatutTraitement.EN_COURS);
         traitement.setSessionCollecte(session);
         traitement.setUtilisateurMetier(utilisateurMetier);
 
@@ -350,7 +352,21 @@ public class TraitementService {
                 t.getSessionCollecte() != null ? t.getSessionCollecte().getIdSession() : null,
                 t.getUtilisateurMetier() != null ? t.getUtilisateurMetier().getId() : null,
                 nomMetier,
-                declarationId
+                declarationId,
+                t.getStatut()
         );
     }
+
+    // ------------------------------------------------------------------ //
+    //  Changer le statut d'un traitement
+    // ------------------------------------------------------------------ //
+    @Transactional
+    public TraitementResponse updateStatut(Long id, StatutTraitement nouveauStatut) {
+        Traitement traitement = traitementRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + id));
+        traitement.setStatut(nouveauStatut);
+        traitementRepository.save(traitement);
+        return toResponse(traitement, null);
+    }
+
 }

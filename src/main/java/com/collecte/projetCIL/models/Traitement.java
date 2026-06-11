@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -47,6 +49,10 @@ public class Traitement {
 
     @Column(name = "nombre_donnee")
     private Long nombreDonnee;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut", nullable = false)
+    private StatutTraitement statut = StatutTraitement.EN_COURS;
 
     @ManyToOne
     @JoinColumn(name = "utilisateur_metier_id")

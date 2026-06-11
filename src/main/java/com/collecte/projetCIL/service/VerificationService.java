@@ -10,6 +10,7 @@ import com.collecte.projetCIL.models.Administrateur;
 import com.collecte.projetCIL.models.CIL;
 import com.collecte.projetCIL.models.DG;
 import com.collecte.projetCIL.models.DPO;
+import com.collecte.projetCIL.models.DemandeAcces;
 import com.collecte.projetCIL.models.Utilisateur;
 import com.collecte.projetCIL.models.UtilisateurMetier;
 import com.collecte.projetCIL.repository.AdministrateurRepository;
@@ -22,11 +23,11 @@ import lombok.RequiredArgsConstructor;
 public class VerificationService {
 
     private final AdministrateurRepository administrateurRepository;
-    private final UtilisateurRepository utilisateurRepository;
+    private final UtilisateurRepository    utilisateurRepository;
 
     public Map<String, String> getFonctionByEmail(String email) {
 
-        // ── 1. Administrateur — pas de vérification de statut ──────────
+        // ── 1. Administrateur ──────────────────────────────────────────
         var adminOpt = administrateurRepository.findByEmail(email);
         if (adminOpt.isPresent()) {
             Administrateur a = adminOpt.get();
@@ -46,24 +47,41 @@ public class VerificationService {
         }
 
         Utilisateur u = userOpt.get();
-
-        // "actif" = true uniquement si ACTIF, false pour tout autre statut
         boolean estActif = StatutUtilisateur.ACTIF.equals(u.getStatutUtilisateur());
 
         Map<String, String> result = new HashMap<>();
         result.put("email", u.getEmail());
         result.put("nom",   u.getNom() + " " + u.getPrenom());
-        result.put("actif", String.valueOf(estActif));   // ← "true" ou "false"
+        result.put("actif", String.valueOf(estActif));
 
-        // Sous-classe UtilisateurMetier
+        // ── Ajout statutDemandeAcces, motifRejet, adminTraitantNom ─────
+        DemandeAcces demande = u.getDemandeAcces();
+        if (demande != null) {
+            result.put("statutDemandeAcces",
+                demande.getStatutDemandeAcces() != null
+                    ? demande.getStatutDemandeAcces().name()
+                    : "");
+            result.put("motifRejet",
+                demande.getMotifRejet() != null ? demande.getMotifRejet() : "");
+            result.put("adminTraitantNom",
+                demande.getAdministrateur() != null
+                    ? demande.getAdministrateur().getNom() + " " + demande.getAdministrateur().getPrenom()
+                    : "");
+        } else {
+            result.put("statutDemandeAcces", "");
+            result.put("motifRejet",         "");
+            result.put("adminTraitantNom",   "");
+        }
+
+        // ── Sous-classes ───────────────────────────────────────────────
         if (u instanceof UtilisateurMetier metier) {
-            result.put("type",      "UTILISATEUR_METIER");
-            result.put("fonction",  metier.getFonction() != null ? metier.getFonction() : "Non renseignée");
-            result.put("telephone", metier.getTelephone() != null ? metier.getTelephone() : "");
+            result.put("type",                "UTILISATEUR_METIER");
+            result.put("fonction",             metier.getFonction() != null ? metier.getFonction() : "Non renseignée");
+            result.put("telephone",            metier.getTelephone() != null ? metier.getTelephone() : "");
+            result.put("utilisateurMetierId",  String.valueOf(metier.getId()));
             return result;
         }
 
-        // Sous-classe CIL
         if (u instanceof CIL cil) {
             result.put("type",                "CIL");
             result.put("fonction",             "Correspondant Informatique & Libertés");
@@ -72,7 +90,6 @@ public class VerificationService {
             return result;
         }
 
-        // Sous-classe DPO
         if (u instanceof DPO dpo) {
             result.put("type",                  "DPO");
             result.put("fonction",               "Délégué à la Protection des Données");
@@ -82,7 +99,6 @@ public class VerificationService {
             return result;
         }
 
-        // Sous-classe DG
         if (u instanceof DG dg) {
             result.put("type",     "DG");
             result.put("fonction", "Direction Générale");
@@ -90,7 +106,6 @@ public class VerificationService {
             return result;
         }
 
-        // Utilisateur de base
         result.put("type",     "UTILISATEUR");
         result.put("fonction", "Non définie");
         return result;
