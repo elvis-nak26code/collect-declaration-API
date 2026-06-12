@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.collecte.projetCIL.enums.StatutDemandeAcces;
 import com.collecte.projetCIL.enums.StatutUtilisateur;
 import com.collecte.projetCIL.models.Administrateur;
 import com.collecte.projetCIL.models.CIL;
@@ -31,13 +32,20 @@ public class VerificationService {
         var adminOpt = administrateurRepository.findByEmail(email);
         if (adminOpt.isPresent()) {
             Administrateur a = adminOpt.get();
-            return Map.of(
-                "type",     "ADMINISTRATEUR",
-                "email",    a.getEmail(),
-                "nom",      a.getNom() + " " + a.getPrenom(),
-                "fonction", a.getFonction() != null ? a.getFonction() : "Non renseignée",
-                "actif",    "true"
-            );
+            Map<String, String> result = new HashMap<>();
+            result.put("type",     "ADMINISTRATEUR");
+            result.put("email",    a.getEmail());
+            result.put("nom",      a.getNom() + " " + a.getPrenom());
+            result.put("fonction", a.getFonction() != null ? a.getFonction() : "Non renseignée");
+            result.put("actif",    "true");
+            result.put("statutUtilisateur",   StatutUtilisateur.ACTIF.name());
+            result.put("statutDemandeAcces",  "");
+            result.put("compteDesactive",     "false");
+            result.put("demandeEnAttente",    "false");
+            result.put("demandeRejetee",      "false");
+            result.put("motifRejet",          "");
+            result.put("adminTraitantNom",    "");
+            return result;
         }
 
         // ── 2. Toutes les sous-classes de Utilisateur ──────────────────
@@ -47,20 +55,32 @@ public class VerificationService {
         }
 
         Utilisateur u = userOpt.get();
-        boolean estActif = StatutUtilisateur.ACTIF.equals(u.getStatutUtilisateur());
+        StatutUtilisateur statutUtilisateur = u.getStatutUtilisateur();
+        boolean estActif = StatutUtilisateur.ACTIF.equals(statutUtilisateur);
+
+        // Compte explicitement désactivé par l'admin (INACTIF, SUSPENDU ou SUPPRIME)
+        boolean compteDesactive = statutUtilisateur != null && !estActif;
 
         Map<String, String> result = new HashMap<>();
         result.put("email", u.getEmail());
         result.put("nom",   u.getNom() + " " + u.getPrenom());
         result.put("actif", String.valueOf(estActif));
+        result.put("statutUtilisateur",
+                statutUtilisateur != null ? statutUtilisateur.name() : "");
+        result.put("compteDesactive", String.valueOf(compteDesactive));
 
         // ── Ajout statutDemandeAcces, motifRejet, adminTraitantNom ─────
         DemandeAcces demande = u.getDemandeAcces();
+        boolean demandeEnAttente = false;
+        boolean demandeRejetee   = false;
+
         if (demande != null) {
+            StatutDemandeAcces statutDemande = demande.getStatutDemandeAcces();
+            demandeEnAttente = StatutDemandeAcces.EN_ATTENTE.equals(statutDemande);
+            demandeRejetee   = StatutDemandeAcces.REJETEE.equals(statutDemande);
+
             result.put("statutDemandeAcces",
-                demande.getStatutDemandeAcces() != null
-                    ? demande.getStatutDemandeAcces().name()
-                    : "");
+                statutDemande != null ? statutDemande.name() : "");
             result.put("motifRejet",
                 demande.getMotifRejet() != null ? demande.getMotifRejet() : "");
             result.put("adminTraitantNom",
@@ -72,6 +92,9 @@ public class VerificationService {
             result.put("motifRejet",         "");
             result.put("adminTraitantNom",   "");
         }
+
+        result.put("demandeEnAttente", String.valueOf(demandeEnAttente));
+        result.put("demandeRejetee",   String.valueOf(demandeRejetee));
 
         // ── Sous-classes ───────────────────────────────────────────────
         if (u instanceof UtilisateurMetier metier) {

@@ -27,4 +27,6 @@ public class TraitementResponse {
     private String utilisateurMetierNom;
     private Long declarationId;
     private StatutTraitement statut;
+    private Boolean envoyeAuDpo;
+    private LocalDateTime dateEnvoiDpo;
 }

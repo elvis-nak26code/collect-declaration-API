@@ -24,4 +24,8 @@ public interface DeclarationRepository extends JpaRepository<Declaration, Long> 
     /** Déclarations en attente, triées par date de soumission. */
     @Query("SELECT d FROM Declaration d WHERE d.statut = 'EN_ATTENTE' ORDER BY d.dateSoumission ASC")
     List<Declaration> findEnAttenteOrderByDate();
+
+    /** Déclaration liée à un traitement donné (s'il en existe une). */
+    @Query("SELECT d FROM Declaration d WHERE d.traitement.idTraitement = :traitementId")
+    java.util.Optional<Declaration> findByTraitementId(@Param("traitementId") Long traitementId);
 }

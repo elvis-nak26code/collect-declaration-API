@@ -17,6 +17,11 @@ public class TraitementRequest {
     private Integer dureeConservation;
     private LocalDateTime dateFin;
     private Long utilisateurMetierId;
+
+    /**
+     * Optionnel : si null, le traitement est créé sans session de collecte.
+     * Il pourra être lié à une session plus tard via PATCH /api/traitements/{id}/session.
+     */
     private Long sessionCollecteId;
 
     // ── Champs communs pré-remplissage Declaration (base) ────────────────

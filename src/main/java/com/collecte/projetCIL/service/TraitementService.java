@@ -21,6 +21,7 @@ import com.collecte.projetCIL.enums.StatutTraitement;
 import com.collecte.projetCIL.enums.TypeAction;
 import com.collecte.projetCIL.enums.TypeNotification;
 import com.collecte.projetCIL.models.DPO;
+import com.collecte.projetCIL.models.Declaration;
 import com.collecte.projetCIL.models.DeclarationAutorisation;
 import com.collecte.projetCIL.models.DeclarationCollecteSiteInternet;
 import com.collecte.projetCIL.models.DeclarationNormale;
@@ -32,6 +33,7 @@ import com.collecte.projetCIL.repository.DPORepository;
 import com.collecte.projetCIL.repository.DeclarationAutorisationRepository;
 import com.collecte.projetCIL.repository.DeclarationCollecteSiteInternetRepository;
 import com.collecte.projetCIL.repository.DeclarationNormaleRepository;
+import com.collecte.projetCIL.repository.DeclarationRepository;
 import com.collecte.projetCIL.repository.DeclarationSystemeVideoSurveillanceRepository;
 import com.collecte.projetCIL.repository.SessionCollecteRepository;
 import com.collecte.projetCIL.repository.TraitementRepository;
@@ -47,6 +49,7 @@ public class TraitementService {
     private final SessionCollecteRepository                   sessionCollecteRepository;
     private final UtilisateurMetierRepository                 utilisateurMetierRepository;
     private final DPORepository                               dpoRepository;
+    private final DeclarationRepository                       declarationRepository;
     private final DeclarationNormaleRepository                declarationNormaleRepository;
     private final DeclarationCollecteSiteInternetRepository   declarationCollecteSiteInternetRepository;
     private final DeclarationSystemeVideoSurveillanceRepository declarationVideoSurveillanceRepository;
@@ -58,10 +61,14 @@ public class TraitementService {
     //  HELPERS PRIVÉS
     // ------------------------------------------------------------------ //
 
-    /** Crée et sauvegarde l'entité Traitement à partir des champs communs. */
+    /** Crée et sauvegarde l'entité Traitement à partir des champs communs.
+     *  La session de collecte est désormais optionnelle. */
     private Traitement buildAndSaveTraitement(TraitementRequest request) {
-        SessionCollecte session = sessionCollecteRepository.findById(request.getSessionCollecteId())
-                .orElseThrow(() -> new RuntimeException("Session introuvable : " + request.getSessionCollecteId()));
+        SessionCollecte session = null;
+        if (request.getSessionCollecteId() != null) {
+            session = sessionCollecteRepository.findById(request.getSessionCollecteId())
+                    .orElseThrow(() -> new RuntimeException("Session introuvable : " + request.getSessionCollecteId()));
+        }
 
         UtilisateurMetier utilisateurMetier = utilisateurMetierRepository.findById(request.getUtilisateurMetierId())
                 .orElseThrow(() -> new RuntimeException("UtilisateurMetier introuvable : " + request.getUtilisateurMetierId()));
@@ -77,6 +84,7 @@ public class TraitementService {
         traitement.setDateFin(request.getDateFin());
         traitement.setNombreDonnee(0L);
         traitement.setStatut(StatutTraitement.EN_COURS);
+        traitement.setEnvoyeAuDpo(false);
         traitement.setSessionCollecte(session);
         traitement.setUtilisateurMetier(utilisateurMetier);
 
@@ -109,28 +117,20 @@ public class TraitementService {
         decl.setAdresseEmailResponsable(request.getAdresseEmail());
         decl.setActivitePrincipale(request.getActivitePrincipale());
 
+        // Si une session est déjà associée, on pré-renseigne le DPO concerné.
+        // Sinon le DPO sera défini lors de l'envoi explicite au DPO.
         SessionCollecte session = traitement.getSessionCollecte();
-        DPO dpo = session.getDpo();
-        decl.setDpo(dpo);
+        if (session != null) {
+            decl.setDpo(session.getDpo());
+        }
     }
 
-    /** Enregistre l'audit et notifie le DPO. */
-    private void auditEtNotifier(Traitement traitement, String typeDeclarationLabel) {
+    /** Enregistre l'audit de création (sans notifier le DPO : il ne doit rien
+     *  voir avant l'envoi explicite par l'UtilisateurMetier). */
+    private void auditCreation(Traitement traitement) {
         UtilisateurMetier um = traitement.getUtilisateurMetier();
-        SessionCollecte session = traitement.getSessionCollecte();
-        DPO dpo = session.getDpo();
-
         journalAuditService.enregistrer(um, TypeAction.CREATION,
                 ModuleConserne.DECLARATION, ResultatAction.SUCCES);
-
-        if (dpo != null) {
-            notificationService.envoyer(dpo, TypeNotification.ALERTE,
-                    "Un nouveau traitement « " + traitement.getDescription()
-                    + " » (" + typeDeclarationLabel + ") a été créé par "
-                    + um.getPrenom() + " " + um.getNom()
-                    + " dans la session #" + session.getIdSession()
-                    + ". Une déclaration a été pré-remplie et attend votre complétion.");
-        }
     }
 
     // ------------------------------------------------------------------ //
@@ -162,7 +162,7 @@ public class TraitementService {
         decl.setIdentiteFichiersInterconnexion(declRequest.getIdentiteFichiersInterconnexion());
 
         DeclarationNormale saved = declarationNormaleRepository.save(decl);
-        auditEtNotifier(traitement, "Déclaration Normale");
+        auditCreation(traitement);
 
         return toResponse(traitement, saved.getIdDeclaration());
     }
@@ -194,7 +194,7 @@ public class TraitementService {
         decl.setTelechargementTraitement(declRequest.getTelechargementTraitement());
 
         DeclarationCollecteSiteInternet saved = declarationCollecteSiteInternetRepository.save(decl);
-        auditEtNotifier(traitement, "Collecte Site Internet");
+        auditCreation(traitement);
 
         return toResponse(traitement, saved.getIdDeclaration());
     }
@@ -234,7 +234,7 @@ public class TraitementService {
         decl.setLocalisationPictogrammes(declRequest.getLocalisationPictogrammes());
 
         DeclarationSystemeVideoSurveillance saved = declarationVideoSurveillanceRepository.save(decl);
-        auditEtNotifier(traitement, "Vidéo Surveillance");
+        auditCreation(traitement);
 
         return toResponse(traitement, saved.getIdDeclaration());
     }
@@ -295,7 +295,7 @@ public class TraitementService {
         decl.setOrigineDonnees(declRequest.getOrigineDonnees());
 
         DeclarationAutorisation saved = declarationAutorisationRepository.save(decl);
-        auditEtNotifier(traitement, "Autorisation");
+        auditCreation(traitement);
 
         return toResponse(traitement, saved.getIdDeclaration());
     }
@@ -308,6 +308,31 @@ public class TraitementService {
                 .stream()
                 .filter(t -> t.getSessionCollecte() != null
                         && t.getSessionCollecte().getIdSession().equals(sessionId))
+                .map(t -> toResponse(t, null))
+                .collect(Collectors.toList());
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Lister les traitements sans session (orphelins) d'un UtilisateurMetier
+    // ------------------------------------------------------------------ //
+    public List<TraitementResponse> listerSansSession(Long utilisateurMetierId) {
+        return traitementRepository.findAll()
+                .stream()
+                .filter(t -> t.getSessionCollecte() == null
+                        && t.getUtilisateurMetier() != null
+                        && t.getUtilisateurMetier().getId().equals(utilisateurMetierId))
+                .map(t -> toResponse(t, null))
+                .collect(Collectors.toList());
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Lister tous les traitements d'un UtilisateurMetier (avec ou sans session)
+    // ------------------------------------------------------------------ //
+    public List<TraitementResponse> listerParUtilisateurMetier(Long utilisateurMetierId) {
+        return traitementRepository.findAll()
+                .stream()
+                .filter(t -> t.getUtilisateurMetier() != null
+                        && t.getUtilisateurMetier().getId().equals(utilisateurMetierId))
                 .map(t -> toResponse(t, null))
                 .collect(Collectors.toList());
     }
@@ -333,12 +358,114 @@ public class TraitementService {
     }
 
     // ------------------------------------------------------------------ //
+    //  Lier un traitement existant à une session de collecte
+    // ------------------------------------------------------------------ //
+    @Transactional
+    public TraitementResponse lierSession(Long traitementId, Long sessionId) {
+        Traitement traitement = traitementRepository.findById(traitementId)
+                .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + traitementId));
+
+        SessionCollecte session = sessionCollecteRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session introuvable : " + sessionId));
+
+        traitement.setSessionCollecte(session);
+        traitementRepository.save(traitement);
+
+        // Si une déclaration existe déjà pour ce traitement et qu'elle n'a pas
+        // encore de DPO assigné, on la rattache au DPO de la session.
+        declarationRepository.findByTraitementId(traitementId).ifPresent(decl -> {
+            if (decl.getDpo() == null) {
+                decl.setDpo(session.getDpo());
+                declarationRepository.save(decl);
+            }
+        });
+
+        return toResponse(traitement, null);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Délier un traitement de sa session (le rendre orphelin)
+    // ------------------------------------------------------------------ //
+    @Transactional
+    public TraitementResponse delierSession(Long traitementId) {
+        Traitement traitement = traitementRepository.findById(traitementId)
+                .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + traitementId));
+
+        traitement.setSessionCollecte(null);
+        traitementRepository.save(traitement);
+
+        return toResponse(traitement, null);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Envoyer un traitement (et sa déclaration) au DPO
+    //  - Tant que cette action n'est pas effectuée, le DPO ne voit pas
+    //    le traitement (listerTous / listerParDpo l'excluent).
+    //  - dpoId est requis uniquement si le traitement n'a pas de session
+    //    (donc pas de DPO déjà déterminé).
+    // ------------------------------------------------------------------ //
+    @Transactional
+    public TraitementResponse envoyerAuDpo(Long traitementId, Long dpoId) {
+        Traitement traitement = traitementRepository.findById(traitementId)
+                .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + traitementId));
+
+        if (Boolean.TRUE.equals(traitement.getEnvoyeAuDpo())) {
+            throw new RuntimeException("Ce traitement a déjà été envoyé au DPO.");
+        }
+
+        DPO dpo = null;
+        if (traitement.getSessionCollecte() != null) {
+            dpo = traitement.getSessionCollecte().getDpo();
+        }
+        if (dpo == null) {
+            if (dpoId == null) {
+                throw new RuntimeException("Aucun DPO associé : veuillez préciser un dpoId.");
+            }
+            dpo = dpoRepository.findById(dpoId)
+                    .orElseThrow(() -> new RuntimeException("DPO introuvable : " + dpoId));
+        }
+
+        // Assigner le DPO à la déclaration pré-remplie si elle existe et n'en a pas
+        Declaration declaration = declarationRepository.findByTraitementId(traitementId).orElse(null);
+        if (declaration != null && declaration.getDpo() == null) {
+            declaration.setDpo(dpo);
+            declarationRepository.save(declaration);
+        }
+
+        traitement.setEnvoyeAuDpo(true);
+        traitement.setDateEnvoiDpo(LocalDateTime.now());
+        traitementRepository.save(traitement);
+
+        UtilisateurMetier um = traitement.getUtilisateurMetier();
+        journalAuditService.enregistrer(um, TypeAction.MODIFICATION,
+                ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        notificationService.envoyer(dpo, TypeNotification.ALERTE,
+                "Le traitement « " + traitement.getDescription()
+                + " » a été envoyé par " + um.getPrenom() + " " + um.getNom()
+                + (traitement.getSessionCollecte() != null
+                    ? " dans la session #" + traitement.getSessionCollecte().getIdSession()
+                    : " (hors session)")
+                + ". Une déclaration attend votre complétion.");
+
+        return toResponse(traitement, declaration != null ? declaration.getIdDeclaration() : null);
+    }
+
+    // ------------------------------------------------------------------ //
     //  Mapper entité -> DTO réponse
     // ------------------------------------------------------------------ //
     private TraitementResponse toResponse(Traitement t, Long declarationId) {
         String nomMetier = (t.getUtilisateurMetier() != null)
                 ? t.getUtilisateurMetier().getPrenom() + " " + t.getUtilisateurMetier().getNom()
                 : null;
+
+        Long declId = declarationId;
+        if (declId == null) {
+            declId = declarationRepository.findByTraitementId(t.getIdTraitement())
+                    .map(Declaration::getIdDeclaration)
+                    .orElse(null);
+        }
+
         return new TraitementResponse(
                 t.getIdTraitement(),
                 t.getDepartment(),
@@ -352,8 +479,10 @@ public class TraitementService {
                 t.getSessionCollecte() != null ? t.getSessionCollecte().getIdSession() : null,
                 t.getUtilisateurMetier() != null ? t.getUtilisateurMetier().getId() : null,
                 nomMetier,
-                declarationId,
-                t.getStatut()
+                declId,
+                t.getStatut(),
+                t.getEnvoyeAuDpo(),
+                t.getDateEnvoiDpo()
         );
     }
 
@@ -372,23 +501,32 @@ public class TraitementService {
 
     // ------------------------------------------------------------------ //
     //  Lister tous les traitements (dashboard DPO global)
+    //  -> uniquement ceux envoyés au DPO
     // ------------------------------------------------------------------ //
     public List<TraitementResponse> listerTous() {
         return traitementRepository.findAll()
                 .stream()
+                .filter(t -> Boolean.TRUE.equals(t.getEnvoyeAuDpo()))
                 .map(t -> toResponse(t, null))
                 .collect(Collectors.toList());
     }
 
     // ------------------------------------------------------------------ //
     //  Lister les traitements des sessions d'un DPO spécifique
+    //  -> uniquement ceux envoyés au DPO
     // ------------------------------------------------------------------ //
     public List<TraitementResponse> listerParDpo(Long dpoId) {
         return traitementRepository.findAll()
                 .stream()
-                .filter(t -> t.getSessionCollecte() != null
-                        && t.getSessionCollecte().getDpo() != null
-                        && t.getSessionCollecte().getDpo().getId().equals(dpoId))
+                .filter(t -> Boolean.TRUE.equals(t.getEnvoyeAuDpo()))
+                .filter(t ->
+                        (t.getSessionCollecte() != null
+                                && t.getSessionCollecte().getDpo() != null
+                                && t.getSessionCollecte().getDpo().getId().equals(dpoId))
+                        || declarationRepository.findByTraitementId(t.getIdTraitement())
+                                .map(d -> d.getDpo() != null && d.getDpo().getId().equals(dpoId))
+                                .orElse(false)
+                )
                 .map(t -> toResponse(t, null))
                 .collect(Collectors.toList());
     }

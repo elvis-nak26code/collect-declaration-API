@@ -2,6 +2,8 @@ package com.collecte.projetCIL.models;
 
 import java.time.LocalDateTime;
 
+import com.collecte.projetCIL.enums.StatutTraitement;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,7 +17,6 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.collecte.projetCIL.enums.StatutTraitement;
 
 @Entity
 @Table(name = "traitement")
@@ -55,11 +56,27 @@ public class Traitement {
     @Column(name = "statut", nullable = false)
     private StatutTraitement statut = StatutTraitement.EN_COURS;
 
+    /**
+     * Indique si le UtilisateurMetier a explicitement envoyé ce traitement
+     * (et sa déclaration pré-remplie) au DPO pour traitement.
+     * Tant que false, le DPO ne doit pas voir ce traitement.
+     */
+    @Column(name = "envoye_au_dpo", nullable = false)
+    private Boolean envoyeAuDpo = false;
+
+    /** Date à laquelle l'envoi au DPO a été effectué. */
+    @Column(name = "date_envoi_dpo")
+    private LocalDateTime dateEnvoiDpo;
+
     @ManyToOne
     @JoinColumn(name = "utilisateur_metier_id")
     private UtilisateurMetier utilisateurMetier;
 
+    /**
+     * Session de collecte associée (optionnelle). Un traitement peut être créé
+     * sans session, puis lié à une session ultérieurement.
+     */
     @ManyToOne
-    @JoinColumn(name = "session_collecte_id")
+    @JoinColumn(name = "session_collecte_id", nullable = true)
     private SessionCollecte sessionCollecte;
 }
