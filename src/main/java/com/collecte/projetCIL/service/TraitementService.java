@@ -99,6 +99,7 @@ public class TraitementService {
         decl.setStatut(StatutDeclaration.EN_ATTENTE);
         decl.setDateSoumission(LocalDate.now());
 
+        // ── Champs de base ────────────────────────────────────────────────
         decl.setSecteur(request.getSecteur());
         decl.setLieuStockage(request.getLieuStockage());
         decl.setDureeConservation(request.getDureeConservationDeclaration());
@@ -107,6 +108,27 @@ public class TraitementService {
         decl.setRecoursSousTraitant(request.getSousTraitance());
         decl.setCommunicationAutresOrganismes(request.getCommunicationTiers());
 
+        // ── Étape 3 : Identification & Responsable ────────────────────────
+        decl.setNomPrenomResponsable(request.getNomPrenomResponsable());
+        decl.setFonctionResponsable(request.getFonctionResponsable());
+        decl.setContactConfidentialite(request.getContactConfidentialite());
+        decl.setNatureDemande(request.getNatureDemande());
+
+        // ── Étape 4 : Données traitées ────────────────────────────────────
+        decl.setCategoriesDonnees(request.getCategoriesDonnees());
+        decl.setOrigineDonnees(request.getOrigineDonnees());
+
+        // ── Étape 4 : Communication & destinataires ───────────────────────
+        decl.setDestinataireConformeCil(request.getDestinataireConformeCil());
+
+
+        // ── Étape 4 : Mesures de sécurité ────────────────────────────────
+        decl.setMesuresSecurite(request.getMesuresSecurite());
+        decl.setMesuresSensibilisation(request.getMesuresSensibilisation());
+        decl.setPolitiqueAccesBatiments(request.getPolitiqueAccesBatiments());
+        decl.setCategoriesPersonnesAcces(request.getCategoriesPersonnesAcces());
+
+        // ── Informations responsable (entreprise) ─────────────────────────
         decl.setNomRaisonSociale(request.getNomRaisonSociale());
         decl.setRccm(request.getRccm());
         decl.setSecteurActivite(request.getSecteurActivite());
@@ -144,13 +166,20 @@ public class TraitementService {
         DeclarationNormale decl = new DeclarationNormale();
         remplirDeclarationBase(decl, request, traitement);
 
-        // Champs spécifiques DeclarationNormale
-        decl.setDenominationTraitement(declRequest.getDenominationTraitement());
-        decl.setFinaliteTraitement(declRequest.getFinaliteTraitement());
-        decl.setTypeTraitement(declRequest.getTypeTraitement());
+        // Champs spécifiques DeclarationNormale :
+        // Priorité aux valeurs de TraitementRequest (saisies lors de la création),
+        // DeclarationNormaleRequest peut les écraser si fourni séparément.
+        decl.setDenominationTraitement(request.getDenominationTraitement() != null
+                ? request.getDenominationTraitement() : declRequest.getDenominationTraitement());
+        decl.setFinaliteTraitement(request.getFinaliteTraitement() != null
+                ? request.getFinaliteTraitement() : declRequest.getFinaliteTraitement());
+        decl.setTypeTraitement(request.getTypeTraitement() != null
+                ? request.getTypeTraitement() : declRequest.getTypeTraitement());
+        decl.setCategoriesPersonnesConcernees(request.getCategoriesPersonnesConcernees() != null
+                ? request.getCategoriesPersonnesConcernees() : declRequest.getCategoriesPersonnesConcernees());
+        decl.setNombrePersonnesConcernees(request.getNombrePersonnesConcernees() != null
+                ? request.getNombrePersonnesConcernees() : declRequest.getNombrePersonnesConcernees());
         decl.setTexteJuridique(declRequest.getTexteJuridique());
-        decl.setCategoriesPersonnesConcernees(declRequest.getCategoriesPersonnesConcernees());
-        decl.setNombrePersonnesConcernees(declRequest.getNombrePersonnesConcernees());
         decl.setDescriptionProcedureManuelle(declRequest.getDescriptionProcedureManuelle());
         decl.setCaracteristiquesTechniques(declRequest.getCaracteristiquesTechniques());
         decl.setCaracteristiquesSysteme(declRequest.getCaracteristiquesSysteme());

@@ -3,6 +3,8 @@ package com.collecte.projetCIL.dto.request;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.collecte.projetCIL.enums.NatureDemande;
+
 import lombok.Data;
 
 @Data
@@ -32,6 +34,32 @@ public class TraitementRequest {
     private Boolean transfertEtranger;
     private Boolean sousTraitance;
     private Boolean communicationTiers;
+
+    // ── Étape 3 : Identification & Responsable ────────────────────────────
+    private String nomPrenomResponsable;
+    private String fonctionResponsable;
+    private String contactConfidentialite;
+    private NatureDemande natureDemande;
+
+    // ── Étape 4 : Données traitées ────────────────────────────────────────
+    private String categoriesDonnees;
+    private String origineDonnees;
+
+    // ── Étape 4 : Communication & destinataires ───────────────────────────
+    private Boolean destinataireConformeCil;
+
+    // ── Étape 4 : Mesures de sécurité ────────────────────────────────────
+    private String mesuresSecurite;
+    private Boolean mesuresSensibilisation;
+    private Boolean politiqueAccesBatiments;
+    private String categoriesPersonnesAcces;
+
+    // ── Étape 2 : Identification du traitement (spécifique DeclarationNormale) ──
+    private String denominationTraitement;
+    private String finaliteTraitement;
+    private String categoriesPersonnesConcernees;
+    private Integer nombrePersonnesConcernees;
+    private String typeTraitement;
 
     // ── Informations responsable → Declaration ────────────────────────────
     private String nomRaisonSociale;
