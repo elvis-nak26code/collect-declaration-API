@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class TraitementResponse {
 
     private Long idTraitement;
+    private String nom;                  // ← ajouté
     private String department;
     private String description;
     private String texte;

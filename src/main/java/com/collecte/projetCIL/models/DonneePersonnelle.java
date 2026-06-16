@@ -33,4 +33,9 @@ public class DonneePersonnelle {
     @ManyToOne
     @JoinColumn(name = "type_donnee_id")
     private TypeDonnee typeDonnee;
+
+    // Traitement auquel cette donnée est rattachée (peut être null pour données orphelines)
+    @ManyToOne
+    @JoinColumn(name = "traitement_id", nullable = true)
+    private Traitement traitement;
 }

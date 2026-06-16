@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +26,7 @@ public class DeclarationService {
     private final TraitementRepository                       traitementRepo;
     private final DPORepository                              dpoRepo;
     private final DGRepository                               dgRepo;
+    private final CILRepository                              cilRepo;
     private final UtilisateurMetierRepository                utilisateurMetierRepo;
     private final JournalAuditService                        journalAuditService;
     private final NotificationService                        notificationService;
@@ -69,7 +71,6 @@ public class DeclarationService {
         d.setIdentiteFichiersInterconnexion(req.getIdentiteFichiersInterconnexion());
 
         DeclarationNormale saved = normaleRepo.save(d);
-
         postCreation(dpo, trt, saved, "NORMALE");
         return toResponse(saved, "NORMALE", trt);
     }
@@ -112,7 +113,6 @@ public class DeclarationService {
         d.setTelechargementTraitement(req.getTelechargementTraitement());
 
         DeclarationCollecteSiteInternet saved = collecteSiteRepo.save(d);
-
         postCreation(dpo, trt, saved, "COLLECTE_SITE");
         return toResponse(saved, "COLLECTE_SITE", trt);
     }
@@ -163,7 +163,6 @@ public class DeclarationService {
         d.setLocalisationPictogrammes(req.getLocalisationPictogrammes());
 
         DeclarationSystemeVideoSurveillance saved = videoRepo.save(d);
-
         postCreation(dpo, trt, saved, "VIDEO_SURVEILLANCE");
         return toResponse(saved, "VIDEO_SURVEILLANCE", trt);
     }
@@ -208,9 +207,7 @@ public class DeclarationService {
         d.setModalitesDiffusionResultats(req.getModalitesDiffusionResultats());
         d.setDestinataireAdresse(req.getDestinataireAdresse());
         d.setTexteJuridiqueCommunication(req.getTexteJuridiqueCommunication());
-        d.setDestinataireAdresse(req.getDestinataireAdresse());
         d.setDestinataireNomPrenom(req.getDestinataireNomPrenom());
-        d.setDestinataireAdresse(req.getDestinataireAdresse());
         d.setConnexionFichiers(req.getConnexionFichiers());
         d.setCategoriesDonneesInterconnexion(req.getCategoriesDonneesInterconnexion());
         d.setDureeInterconnexion(req.getDureeInterconnexion());
@@ -221,7 +218,7 @@ public class DeclarationService {
         d.setCategoriesPersonnesAcces(req.getCategoriesPersonnesAcces());
         d.setPolitiqueAccesBatiments(req.getPolitiqueAccesBatiments());
         d.setMesuresSecurite(req.getMesuresSecurite());
-        d.setDescriptionSensibilisation(req.getDescriptionSensibilisation() != null ? req.getDescriptionSensibilisation() : null);
+        d.setDescriptionSensibilisation(req.getDescriptionSensibilisation());
         d.setPaysDestinationProtectionDonnees(req.getPaysDestinationProtectionDonnees());
         d.setDescriptionFichierTransfert(req.getDescriptionFichierTransfert());
         d.setNombrePersonnesTransfert(req.getNombrePersonnesTransfert());
@@ -230,36 +227,36 @@ public class DeclarationService {
         d.setConsentementPersonnesConcernees(req.getConsentementPersonnesConcernees());
         d.setMethodeRecueilConsentement(req.getMethodeRecueilConsentement());
         d.setMesuresSecuriteTransfert(req.getMesuresSecuriteTransfert());
-        d.setLieuStockage(req.getLieuStockage());
-        d.setCommunicationAutresOrganismes(req.getCommunicationAutresOrganismes());
         d.setDureeConservationSante(req.getDureeConservationSante());
         d.setOrigineDonnees(req.getOrigineDonnees());
 
         DeclarationAutorisation saved = autorisationRepo.save(d);
-
         postCreation(dpo, trt, saved, "AUTORISATION");
         return toResponse(saved, "AUTORISATION", trt);
     }
 
     // ================================================================== //
-    //  CONSULTATION — Lister les déclarations
+    //  CONSULTATION
     // ================================================================== //
-
-    /** Toutes les déclarations d'un DPO */
     public List<DeclarationResponse> listerParDpo(Long dpoId) {
         return declarationRepo.findByDpoId(dpoId).stream()
                 .map(d -> toResponse(d, detecterType(d), null))
                 .collect(Collectors.toList());
     }
 
-    /** Déclarations en attente de validation par la DG */
     public List<DeclarationResponse> listerEnAttente() {
-        return declarationRepo.findEnAttenteOrderByDate().stream()
+        return declarationRepo.findByStatut(StatutDeclaration.EN_ATTENTE).stream()
                 .map(d -> toResponse(d, detecterType(d), null))
                 .collect(Collectors.toList());
     }
 
-    /** Obtenir une déclaration par ID */
+    /** Déclarations approuvées par la DG → en attente de vérification CIL. */
+    public List<DeclarationResponse> listerPourCil() {
+        return declarationRepo.findByStatut(StatutDeclaration.EN_VERIFICATION_CIL).stream()
+                .map(d -> toResponse(d, detecterType(d), null))
+                .collect(Collectors.toList());
+    }
+
     public DeclarationResponse getById(Long id) {
         Declaration d = declarationRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Déclaration introuvable : " + id));
@@ -267,7 +264,7 @@ public class DeclarationService {
     }
 
     // ================================================================== //
-    //  VALIDATION / REJET PAR LA DG
+    //  WORKFLOW DG : valider → transmettre à CIL / rejeter → notifier DPO //
     // ================================================================== //
     @Transactional
     public DeclarationResponse validerDeclaration(Long declarationId, String emailDg) {
@@ -277,17 +274,22 @@ public class DeclarationService {
         DG dg = dgRepo.findByEmail(emailDg)
                 .orElseThrow(() -> new RuntimeException("DG introuvable : " + emailDg));
 
-        d.setStatut(StatutDeclaration.APPROUVEE);
+        // Transition : EN_ATTENTE → EN_VERIFICATION_CIL
+        d.setStatut(StatutDeclaration.EN_VERIFICATION_CIL);
         Declaration saved = declarationRepo.save(d);
 
-        // Audit DG
         journalAuditService.enregistrer(dg, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notifier le DPO
+        // Notifier le DPO que la déclaration a été transmise à la CIL
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.CONFIRMATION,
-                    "Votre déclaration #" + declarationId + " a été approuvée par la DG.");
+                    "Votre déclaration #" + declarationId + " a été approuvée par le DG et transmise à la CIL pour vérification de conformité.");
         }
+
+        // Notifier la CIL
+        cilRepo.findAll().stream().findFirst().ifPresent(cil ->
+                notificationService.envoyer(cil, TypeNotification.ALERTE,
+                        "Une nouvelle déclaration (#" + declarationId + ") vous a été transmise par le DG pour vérification de conformité."));
 
         return toResponse(saved, detecterType(saved), null);
     }
@@ -300,16 +302,66 @@ public class DeclarationService {
         DG dg = dgRepo.findByEmail(emailDg)
                 .orElseThrow(() -> new RuntimeException("DG introuvable : " + emailDg));
 
-        d.setStatut(StatutDeclaration.REJETEE);
+        d.setStatut(StatutDeclaration.REJETEE_DG);
         Declaration saved = declarationRepo.save(d);
 
-        // Audit DG
         journalAuditService.enregistrer(dg, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notifier le DPO avec le commentaire de rejet
+        // Notifier le DPO avec le motif de rejet
         if (d.getDpo() != null) {
-            String message = "Votre déclaration #" + declarationId + " a été rejetée. Motif : " + commentaire;
-            notificationService.envoyer(d.getDpo(), TypeNotification.ALERTE, message);
+            notificationService.envoyer(d.getDpo(), TypeNotification.ALERTE,
+                    "Votre déclaration #" + declarationId + " a été rejetée par le DG. Motif : " + commentaire
+                    + " — Veuillez la corriger et la soumettre à nouveau.");
+        }
+
+        return toResponse(saved, detecterType(saved), null);
+    }
+
+    // ================================================================== //
+    //  WORKFLOW CIL : valider conformité / rejeter                        //
+    // ================================================================== //
+    @Transactional
+    public DeclarationResponse validerConformiteCil(Long declarationId, String emailCil) {
+        Declaration d = declarationRepo.findById(declarationId)
+                .orElseThrow(() -> new RuntimeException("Déclaration introuvable : " + declarationId));
+
+        CIL cil = cilRepo.findByEmail(emailCil)
+                .orElseThrow(() -> new RuntimeException("CIL introuvable : " + emailCil));
+
+        d.setStatut(StatutDeclaration.VALIDEE_CIL);
+        d.setCil(cil);
+        Declaration saved = declarationRepo.save(d);
+
+        journalAuditService.enregistrer(cil, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        // Notifier le DPO
+        if (d.getDpo() != null) {
+            notificationService.envoyer(d.getDpo(), TypeNotification.CONFIRMATION,
+                    "Votre déclaration #" + declarationId + " a été validée conforme par la CIL. Le processus est terminé.");
+        }
+
+        return toResponse(saved, detecterType(saved), null);
+    }
+
+    @Transactional
+    public DeclarationResponse rejeterConformiteCil(Long declarationId, String emailCil, String commentaire) {
+        Declaration d = declarationRepo.findById(declarationId)
+                .orElseThrow(() -> new RuntimeException("Déclaration introuvable : " + declarationId));
+
+        CIL cil = cilRepo.findByEmail(emailCil)
+                .orElseThrow(() -> new RuntimeException("CIL introuvable : " + emailCil));
+
+        d.setStatut(StatutDeclaration.REJETEE_CIL);
+        d.setCil(cil);
+        Declaration saved = declarationRepo.save(d);
+
+        journalAuditService.enregistrer(cil, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        // Notifier le DPO
+        if (d.getDpo() != null) {
+            notificationService.envoyer(d.getDpo(), TypeNotification.ALERTE,
+                    "Votre déclaration #" + declarationId + " a été jugée non conforme par la CIL. Motif : " + commentaire
+                    + " — Veuillez corriger et soumettre à nouveau.");
         }
 
         return toResponse(saved, detecterType(saved), null);
@@ -318,20 +370,15 @@ public class DeclarationService {
     // ================================================================== //
     //  HELPERS PRIVÉS
     // ================================================================== //
-
-    /**
-     * Actions post-création communes : audit DPO + notification DG.
-     */
     private void postCreation(DPO dpo, Traitement trt, Declaration saved, String type) {
-        // Journal d'audit pour le DPO
         journalAuditService.enregistrer(dpo, TypeAction.CREATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notification au DG (on prend le premier DG — hypothèse : un seul compte DG)
+        // Notification au DG
         dgRepo.findAll().stream().findFirst().ifPresent(dg ->
                 notificationService.envoyer(dg, TypeNotification.ALERTE,
-                        "Nouvelle déclaration de type " + type + " soumise par " +
-                        dpo.getPrenom() + " " + dpo.getNom() +
-                        " — en attente de validation."));
+                        "Nouvelle déclaration de type " + type + " soumise par "
+                        + dpo.getPrenom() + " " + dpo.getNom()
+                        + " — en attente de votre validation. (#" + saved.getIdDeclaration() + ")"));
     }
 
     private void remplirChampBase(Declaration d,
@@ -395,10 +442,10 @@ public class DeclarationService {
     }
 
     private String detecterType(Declaration d) {
-        if (d instanceof DeclarationNormale)               return "NORMALE";
-        if (d instanceof DeclarationCollecteSiteInternet)  return "COLLECTE_SITE";
-        if (d instanceof DeclarationSystemeVideoSurveillance) return "VIDEO_SURVEILLANCE";
-        if (d instanceof DeclarationAutorisation)          return "AUTORISATION";
+        if (d instanceof DeclarationNormale)                      return "NORMALE";
+        if (d instanceof DeclarationCollecteSiteInternet)         return "COLLECTE_SITE";
+        if (d instanceof DeclarationSystemeVideoSurveillance)     return "VIDEO_SURVEILLANCE";
+        if (d instanceof DeclarationAutorisation)                 return "AUTORISATION";
         return "INCONNUE";
     }
 
@@ -409,8 +456,8 @@ public class DeclarationService {
             dpoId  = d.getDpo().getId();
             dpoNom = d.getDpo().getPrenom() + " " + d.getDpo().getNom();
         }
-        Long   trtId  = trt != null ? trt.getIdTraitement() : null;
-        String trtDesc = trt != null ? trt.getDescription() : null;
+        Long   trtId   = trt != null ? trt.getIdTraitement() : null;
+        String trtDesc = trt != null ? trt.getDescription()  : null;
 
         return new DeclarationResponse(
                 d.getIdDeclaration(),

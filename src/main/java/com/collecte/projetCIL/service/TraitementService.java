@@ -45,17 +45,17 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TraitementService {
 
-    private final TraitementRepository                        traitementRepository;
-    private final SessionCollecteRepository                   sessionCollecteRepository;
-    private final UtilisateurMetierRepository                 utilisateurMetierRepository;
-    private final DPORepository                               dpoRepository;
-    private final DeclarationRepository                       declarationRepository;
-    private final DeclarationNormaleRepository                declarationNormaleRepository;
-    private final DeclarationCollecteSiteInternetRepository   declarationCollecteSiteInternetRepository;
+    private final TraitementRepository                          traitementRepository;
+    private final SessionCollecteRepository                     sessionCollecteRepository;
+    private final UtilisateurMetierRepository                   utilisateurMetierRepository;
+    private final DPORepository                                 dpoRepository;
+    private final DeclarationRepository                         declarationRepository;
+    private final DeclarationNormaleRepository                  declarationNormaleRepository;
+    private final DeclarationCollecteSiteInternetRepository     declarationCollecteSiteInternetRepository;
     private final DeclarationSystemeVideoSurveillanceRepository declarationVideoSurveillanceRepository;
-    private final DeclarationAutorisationRepository           declarationAutorisationRepository;
-    private final JournalAuditService                         journalAuditService;
-    private final NotificationService                         notificationService;
+    private final DeclarationAutorisationRepository             declarationAutorisationRepository;
+    private final JournalAuditService                           journalAuditService;
+    private final NotificationService                           notificationService;
 
     // ------------------------------------------------------------------ //
     //  HELPERS PRIVÉS
@@ -121,7 +121,6 @@ public class TraitementService {
         // ── Étape 4 : Communication & destinataires ───────────────────────
         decl.setDestinataireConformeCil(request.getDestinataireConformeCil());
 
-
         // ── Étape 4 : Mesures de sécurité ────────────────────────────────
         decl.setMesuresSecurite(request.getMesuresSecurite());
         decl.setMesuresSensibilisation(request.getMesuresSensibilisation());
@@ -140,15 +139,13 @@ public class TraitementService {
         decl.setActivitePrincipale(request.getActivitePrincipale());
 
         // Si une session est déjà associée, on pré-renseigne le DPO concerné.
-        // Sinon le DPO sera défini lors de l'envoi explicite au DPO.
         SessionCollecte session = traitement.getSessionCollecte();
         if (session != null) {
             decl.setDpo(session.getDpo());
         }
     }
 
-    /** Enregistre l'audit de création (sans notifier le DPO : il ne doit rien
-     *  voir avant l'envoi explicite par l'UtilisateurMetier). */
+    /** Enregistre l'audit de création. */
     private void auditCreation(Traitement traitement) {
         UtilisateurMetier um = traitement.getUtilisateurMetier();
         journalAuditService.enregistrer(um, TypeAction.CREATION,
@@ -166,9 +163,6 @@ public class TraitementService {
         DeclarationNormale decl = new DeclarationNormale();
         remplirDeclarationBase(decl, request, traitement);
 
-        // Champs spécifiques DeclarationNormale :
-        // Priorité aux valeurs de TraitementRequest (saisies lors de la création),
-        // DeclarationNormaleRequest peut les écraser si fourni séparément.
         decl.setDenominationTraitement(request.getDenominationTraitement() != null
                 ? request.getDenominationTraitement() : declRequest.getDenominationTraitement());
         decl.setFinaliteTraitement(request.getFinaliteTraitement() != null
@@ -207,7 +201,6 @@ public class TraitementService {
         DeclarationCollecteSiteInternet decl = new DeclarationCollecteSiteInternet();
         remplirDeclarationBase(decl, request, traitement);
 
-        // Champs spécifiques DeclarationCollecteSiteInternet
         decl.setDenominationTraitement(declRequest.getDenominationTraitement());
         decl.setFinaliteTraitement(declRequest.getFinaliteTraitement());
         decl.setTexteJuridique(declRequest.getTexteJuridique());
@@ -239,7 +232,6 @@ public class TraitementService {
         DeclarationSystemeVideoSurveillance decl = new DeclarationSystemeVideoSurveillance();
         remplirDeclarationBase(decl, request, traitement);
 
-        // Champs spécifiques DeclarationSystemeVideoSurveillance
         decl.setFinalites(declRequest.getFinalites());
         decl.setAdresseInstallation(declRequest.getAdresseInstallation());
         decl.setNatureEnvironnement(declRequest.getNatureEnvironnement());
@@ -279,7 +271,6 @@ public class TraitementService {
         DeclarationAutorisation decl = new DeclarationAutorisation();
         remplirDeclarationBase(decl, request, traitement);
 
-        // Champs spécifiques DeclarationAutorisation
         decl.setDenominationTraitement(declRequest.getDenominationTraitement());
         decl.setFinaliteTraitement(declRequest.getFinaliteTraitement());
         decl.setTexteJuridique(declRequest.getTexteJuridique());
@@ -342,7 +333,7 @@ public class TraitementService {
     }
 
     // ------------------------------------------------------------------ //
-    //  Lister les traitements sans session (orphelins) d'un UtilisateurMetier
+    //  Lister les traitements sans session d'un UtilisateurMetier
     // ------------------------------------------------------------------ //
     public List<TraitementResponse> listerSansSession(Long utilisateurMetierId) {
         return traitementRepository.findAll()
@@ -355,7 +346,7 @@ public class TraitementService {
     }
 
     // ------------------------------------------------------------------ //
-    //  Lister tous les traitements d'un UtilisateurMetier (avec ou sans session)
+    //  Lister tous les traitements d'un UtilisateurMetier
     // ------------------------------------------------------------------ //
     public List<TraitementResponse> listerParUtilisateurMetier(Long utilisateurMetierId) {
         return traitementRepository.findAll()
@@ -387,7 +378,7 @@ public class TraitementService {
     }
 
     // ------------------------------------------------------------------ //
-    //  Lier un traitement existant à une session de collecte
+    //  Lier un traitement à une session de collecte
     // ------------------------------------------------------------------ //
     @Transactional
     public TraitementResponse lierSession(Long traitementId, Long sessionId) {
@@ -400,8 +391,6 @@ public class TraitementService {
         traitement.setSessionCollecte(session);
         traitementRepository.save(traitement);
 
-        // Si une déclaration existe déjà pour ce traitement et qu'elle n'a pas
-        // encore de DPO assigné, on la rattache au DPO de la session.
         declarationRepository.findByTraitementId(traitementId).ifPresent(decl -> {
             if (decl.getDpo() == null) {
                 decl.setDpo(session.getDpo());
@@ -413,7 +402,7 @@ public class TraitementService {
     }
 
     // ------------------------------------------------------------------ //
-    //  Délier un traitement de sa session (le rendre orphelin)
+    //  Délier un traitement de sa session
     // ------------------------------------------------------------------ //
     @Transactional
     public TraitementResponse delierSession(Long traitementId) {
@@ -427,11 +416,7 @@ public class TraitementService {
     }
 
     // ------------------------------------------------------------------ //
-    //  Envoyer un traitement (et sa déclaration) au DPO
-    //  - Tant que cette action n'est pas effectuée, le DPO ne voit pas
-    //    le traitement (listerTous / listerParDpo l'excluent).
-    //  - dpoId est requis uniquement si le traitement n'a pas de session
-    //    (donc pas de DPO déjà déterminé).
+    //  Envoyer un traitement au DPO
     // ------------------------------------------------------------------ //
     @Transactional
     public TraitementResponse envoyerAuDpo(Long traitementId, Long dpoId) {
@@ -454,7 +439,6 @@ public class TraitementService {
                     .orElseThrow(() -> new RuntimeException("DPO introuvable : " + dpoId));
         }
 
-        // Assigner le DPO à la déclaration pré-remplie si elle existe et n'en a pas
         Declaration declaration = declarationRepository.findByTraitementId(traitementId).orElse(null);
         if (declaration != null && declaration.getDpo() == null) {
             declaration.setDpo(dpo);
@@ -497,6 +481,7 @@ public class TraitementService {
 
         return new TraitementResponse(
                 t.getIdTraitement(),
+                t.getNom(),                                                              // ← ajouté
                 t.getDepartment(),
                 t.getDescription(),
                 t.getTexte(),
@@ -526,7 +511,6 @@ public class TraitementService {
         traitementRepository.save(traitement);
         return toResponse(traitement, null);
     }
-
 
     // ------------------------------------------------------------------ //
     //  Lister tous les traitements (dashboard DPO global)
@@ -559,5 +543,4 @@ public class TraitementService {
                 .map(t -> toResponse(t, null))
                 .collect(Collectors.toList());
     }
-
 }

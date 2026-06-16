@@ -4,5 +4,8 @@ public enum TypeNotification {
     ALERTE,
     RAPPEL,
     CONFIRMATION,
-    RELANCE
+    RELANCE,
+    DEMANDE_MODIFICATION,
+    DEMANDE_SUPPRESSION,
+    PLAINTE
 }

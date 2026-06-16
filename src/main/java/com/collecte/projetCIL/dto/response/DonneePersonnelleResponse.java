@@ -14,9 +14,17 @@ public class DonneePersonnelleResponse {
     private Long idDonnee;
     private String valeur;
     private LocalDateTime dateCollecte;
+
+    // Usager concerné
     private Long usagerId;
     private String usagerNomComplet;
+
+    // Type de donnée
     private Long typeDonneeId;
     private String typeDonneeNom;
     private Boolean typeDonneeSensible;
+
+    // Traitement source (collecte)
+    private Long traitementId;
+    private String traitementNom;
 }

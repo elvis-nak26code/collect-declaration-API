@@ -14,19 +14,25 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Routes déclarations.
+ * ── Création (DPO) ────────────────────────────────────────────────────────
+ * POST   /api/declarations/normale
+ * POST   /api/declarations/collecte-site
+ * POST   /api/declarations/video-surveillance
+ * POST   /api/declarations/autorisation
  *
- * POST   /api/declarations/normale                 → créer déclaration normale      (DPO)
- * POST   /api/declarations/collecte-site           → créer déclaration site web     (DPO)
- * POST   /api/declarations/video-surveillance      → créer déclaration vidéo        (DPO)
- * POST   /api/declarations/autorisation            → créer déclaration autorisation  (DPO)
+ * ── Consultation ──────────────────────────────────────────────────────────
+ * GET    /api/declarations/mes-declarations?dpoId=     (DPO)
+ * GET    /api/declarations/en-attente                   (DG)
+ * GET    /api/declarations/pour-cil                     (CIL)
+ * GET    /api/declarations/{id}                         (DPO, DG, CIL)
  *
- * GET    /api/declarations/mes-declarations        → mes déclarations               (DPO)
- * GET    /api/declarations/en-attente              → déclarations EN_ATTENTE        (DG)
- * GET    /api/declarations/{id}                    → détail d'une déclaration       (DPO, DG, CIL)
+ * ── Workflow DG ───────────────────────────────────────────────────────────
+ * PUT    /api/declarations/{id}/valider                 (DG → transmet à CIL)
+ * PUT    /api/declarations/{id}/rejeter                 (DG → renvoie au DPO)
  *
- * PUT    /api/declarations/{id}/valider            → approuver                      (DG)
- * PUT    /api/declarations/{id}/rejeter            → rejeter + commentaire          (DG)
+ * ── Workflow CIL ──────────────────────────────────────────────────────────
+ * PUT    /api/declarations/{id}/valider-conformite      (CIL → conforme)
+ * PUT    /api/declarations/{id}/rejeter-conformite      (CIL → non conforme)
  */
 @RestController
 @RequestMapping("/api/declarations")
@@ -35,9 +41,7 @@ public class DeclarationController {
 
     private final DeclarationService declarationService;
 
-    // ================================================================== //
-    //  CRÉATION — 4 types
-    // ================================================================== //
+    // ── Création ──────────────────────────────────────────────────────── //
 
     @PostMapping("/normale")
     @PreAuthorize("hasAuthority('ROLE_DPO')")
@@ -71,35 +75,35 @@ public class DeclarationController {
         return ResponseEntity.ok(declarationService.creerDeclarationAutorisation(request, userDetails.getUsername()));
     }
 
-    // ================================================================== //
-    //  CONSULTATION
-    // ================================================================== //
+    // ── Consultation ──────────────────────────────────────────────────── //
 
-    /** Le DPO voit ses propres déclarations — l'ID est déduit du token. */
     @GetMapping("/mes-declarations")
     @PreAuthorize("hasAuthority('ROLE_DPO')")
-    public ResponseEntity<List<DeclarationResponse>> mesDeclarations(
-            @RequestParam Long dpoId) {
+    public ResponseEntity<List<DeclarationResponse>> mesDeclarations(@RequestParam Long dpoId) {
         return ResponseEntity.ok(declarationService.listerParDpo(dpoId));
     }
 
-    /** La DG voit toutes les déclarations EN_ATTENTE de validation. */
+    /** DG : déclarations EN_ATTENTE soumises par le DPO. */
     @GetMapping("/en-attente")
     @PreAuthorize("hasAnyAuthority('ROLE_DG','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<List<DeclarationResponse>> declarationsEnAttente() {
         return ResponseEntity.ok(declarationService.listerEnAttente());
     }
 
-    /** Détail d'une déclaration — accessible au DPO, DG et CIL. */
+    /** CIL : déclarations approuvées par la DG, en attente de vérification conformité. */
+    @GetMapping("/pour-cil")
+    @PreAuthorize("hasAnyAuthority('ROLE_CIL','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<List<DeclarationResponse>> declarationsPourCil() {
+        return ResponseEntity.ok(declarationService.listerPourCil());
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_DG','ROLE_CIL','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<DeclarationResponse> getDeclaration(@PathVariable Long id) {
         return ResponseEntity.ok(declarationService.getById(id));
     }
 
-    // ================================================================== //
-    //  VALIDATION / REJET PAR LA DG
-    // ================================================================== //
+    // ── Workflow DG ───────────────────────────────────────────────────── //
 
     @PutMapping("/{id}/valider")
     @PreAuthorize("hasAuthority('ROLE_DG')")
@@ -117,5 +121,25 @@ public class DeclarationController {
             @AuthenticationPrincipal UserDetails userDetails) {
         String commentaire = body.getOrDefault("commentaire", "Aucun commentaire fourni.");
         return ResponseEntity.ok(declarationService.rejeterDeclaration(id, userDetails.getUsername(), commentaire));
+    }
+
+    // ── Workflow CIL ──────────────────────────────────────────────────── //
+
+    @PutMapping("/{id}/valider-conformite")
+    @PreAuthorize("hasAuthority('ROLE_CIL')")
+    public ResponseEntity<DeclarationResponse> validerConformite(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(declarationService.validerConformiteCil(id, userDetails.getUsername()));
+    }
+
+    @PutMapping("/{id}/rejeter-conformite")
+    @PreAuthorize("hasAuthority('ROLE_CIL')")
+    public ResponseEntity<DeclarationResponse> rejeterConformite(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String commentaire = body.getOrDefault("commentaire", "Aucun commentaire fourni.");
+        return ResponseEntity.ok(declarationService.rejeterConformiteCil(id, userDetails.getUsername(), commentaire));
     }
 }

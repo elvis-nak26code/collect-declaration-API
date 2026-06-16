@@ -24,10 +24,14 @@ public class Demande {
     private LocalDate dateDemande;
 
     @Column(name = "type_demande")
-    private String typeDemande;
+    private String typeDemande;  // "MODIFICATION" ou "SUPPRESSION"
 
     @Column(name = "description_demande")
     private String descriptionDemande;
+
+    /** Nouvelle valeur souhaitée (uniquement pour MODIFICATION). */
+    @Column(name = "nouvelle_valeur")
+    private String nouvelleValeur;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "statut_demande")
@@ -41,13 +45,18 @@ public class Demande {
     @Column(name = "motif_rejet")
     private String motifRejet;
 
-    // ManyToOne Usager (fait)
+    // Usager qui fait la demande
     @ManyToOne
     @JoinColumn(name = "usager_id")
     private Usager usager;
 
-    // ManyToOne UtilisateurMetier (traite)
+    // UtilisateurMetier qui traite la demande
     @ManyToOne
     @JoinColumn(name = "utilisateur_metier_id")
     private UtilisateurMetier utilisateurMetier;
+
+    // Donnée personnelle concernée par la demande
+    @ManyToOne
+    @JoinColumn(name = "donnee_id", nullable = true)
+    private DonneePersonnelle donneePersonnelle;
 }

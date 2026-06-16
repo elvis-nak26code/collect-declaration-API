@@ -4,5 +4,8 @@ public enum ModuleConserne {
     DECLARATION,
     DEMANDE,
     PLAINTE,
-    UTILISATEUR
+    UTILISATEUR,
+    DONNEE,
+    TRAITEMENT,
+    SESSION
 }

@@ -47,13 +47,18 @@ public class Plainte {
     @Column(name = "demande_prealable_effectuee")
     private Boolean demandePrealableEffectuee;
 
-    // ManyToOne Usager (soumet)
+    // Usager qui a déposé la plainte (optionnel — peut être null si CIL → DPO)
     @ManyToOne
-    @JoinColumn(name = "usager_id")
+    @JoinColumn(name = "usager_id", nullable = true)
     private Usager usager;
 
-    // ManyToOne CIL (traite)
+    // CIL émetteur de la plainte (pour plaintes CIL → DPO)
     @ManyToOne
-    @JoinColumn(name = "cil_id")
+    @JoinColumn(name = "cil_id", nullable = true)
     private CIL cil;
+
+    // DPO destinataire de la plainte émise par la CIL
+    @ManyToOne
+    @JoinColumn(name = "dpo_id", nullable = true)
+    private DPO dpo;
 }
