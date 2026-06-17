@@ -22,15 +22,15 @@ public class DemandeResponse {
     private String motifRejet;
     private LocalDate dateTraitement;
 
-    // Usager
     private Long usagerId;
     private String usagerNomComplet;
 
-    // UtilisateurMetier
+    private Long personneId;
+    private String personneNomComplet;
+
     private Long utilisateurMetierId;
     private String utilisateurMetierNomComplet;
 
-    // Donnée concernée
     private Long donneeId;
     private String donneeValeur;
 }

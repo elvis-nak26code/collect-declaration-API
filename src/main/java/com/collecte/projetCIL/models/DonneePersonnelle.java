@@ -24,8 +24,13 @@ public class DonneePersonnelle {
     @Column(name = "date_collecte")
     private LocalDateTime dateCollecte;
 
-    // 1..* DonneePersonnelle -> 1 Usager
-    @ManyToOne
+    // 1..* DonneePersonnelle -> 1 Personne (la vraie personne concernée)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "personne_id")
+    private Personne personne;
+
+    // 1..* DonneePersonnelle -> 1 Usager (compte ayant saisi — conservé pour compatibilité)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usager_id")
     private Usager usager;
 

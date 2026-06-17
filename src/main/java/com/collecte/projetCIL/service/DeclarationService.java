@@ -701,7 +701,7 @@ public class DeclarationService {
             if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
             if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
             if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
-            if (r.getDescriptionSensibilisation() != null) d.setDescriptionSensibilisation(r.getDescriptionSensibilisation());
+            if (r.getDescriptionSensibilisation() != null && d instanceof DeclarationAutorisation da) da.setDescriptionSensibilisation(r.getDescriptionSensibilisation());
         }
     }
 

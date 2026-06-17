@@ -20,6 +20,7 @@ public class InscriptionService {
     private final UtilisateurRepository utilisateurRepository;
     private final DemandeAccesRepository demandeAccesRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PersonneService personneService;
 
     // Repositories spécifiques pour garantir l'insert dans les tables enfants
     private final DPORepository dpoRepository;
@@ -41,6 +42,16 @@ public class InscriptionService {
 
         // Sauvegarder via le bon repository selon le type réel
         Utilisateur saved = sauvegarderUtilisateur(utilisateur);
+
+        // Lier ou créer une Personne pour cet utilisateur
+        Personne personne = personneService.creerOuRecuperer(
+                request.getNom(),
+                request.getPrenom(),
+                request.getEmail(),
+                request.getTelephone()
+        );
+        saved.setPersonne(personne);
+        sauvegarderUtilisateur(saved);
 
         DemandeAcces demande = new DemandeAcces();
         demande.setUtilisateur(saved);

@@ -9,7 +9,8 @@ public class DonneePersonnelleRequest {
 
     private String valeur;
     private LocalDateTime dateCollecte;
-    private Long usagerId;       // ID de l'Usager concerné
-    private Long typeDonneeId;   // ID du TypeDonnee
-    private Long traitementId;   // ID du Traitement auquel cette donnée est rattachée
+    private Long usagerId;
+    private Long personneId;
+    private Long typeDonneeId;
+    private Long traitementId;
 }

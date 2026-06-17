@@ -45,8 +45,13 @@ public class Demande {
     @Column(name = "motif_rejet")
     private String motifRejet;
 
-    // Usager qui fait la demande
-    @ManyToOne
+    // Personne concernée par la demande
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "personne_id")
+    private Personne personne;
+
+    // Usager qui fait la demande (conservé pour compatibilité)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usager_id")
     private Usager usager;
 

@@ -34,9 +34,6 @@ public class DemandeService {
     private final NotificationService notificationService;
     private final JournalAuditService journalAuditService;
 
-    // --------------------------------------------------------- //
-    //  Usager soumet une demande de modification ou suppression  //
-    // --------------------------------------------------------- //
     @Transactional
     public DemandeResponse soumettreDemandeUsager(DemandeRequest req) {
 
@@ -46,7 +43,6 @@ public class DemandeService {
         DonneePersonnelle donnee = donneeRepository.findById(req.getDonneeId())
                 .orElseThrow(() -> new RuntimeException("Donnée introuvable : " + req.getDonneeId()));
 
-        // L'UtilisateurMetier responsable est celui lié au traitement de la donnée
         UtilisateurMetier um = (donnee.getTraitement() != null)
                 ? donnee.getTraitement().getUtilisateurMetier()
                 : null;
@@ -58,12 +54,14 @@ public class DemandeService {
         demande.setNouvelleValeur(req.getNouvelleValeur());
         demande.setStatutDemande(StatutDemande.EN_COURS);
         demande.setUsager(usager);
+        if (usager.getPersonne() != null) {
+            demande.setPersonne(usager.getPersonne());
+        }
         demande.setUtilisateurMetier(um);
         demande.setDonneePersonnelle(donnee);
 
         Demande saved = demandeRepository.save(demande);
 
-        // Notifier l'UtilisateurMetier
         if (um != null) {
             TypeNotification typeNotif = "SUPPRESSION".equalsIgnoreCase(req.getTypeDemande())
                     ? TypeNotification.DEMANDE_SUPPRESSION
@@ -74,15 +72,11 @@ public class DemandeService {
             notificationService.envoyer(um, typeNotif, msg);
         }
 
-        // Audit usager
         journalAuditService.enregistrer(usager, TypeAction.CREATION, ModuleConserne.DEMANDE, ResultatAction.SUCCES);
 
         return toResponse(saved);
     }
 
-    // --------------------------------------------------------- //
-    //  UtilisateurMetier accepte la demande                      //
-    // --------------------------------------------------------- //
     @Transactional
     public DemandeResponse accepterDemande(Long demandeId, String emailUm) {
 
@@ -93,11 +87,9 @@ public class DemandeService {
         DonneePersonnelle donnee = demande.getDonneePersonnelle();
 
         if ("SUPPRESSION".equalsIgnoreCase(demande.getTypeDemande())) {
-            // Supprimer la donnée
             if (donnee != null) donneeRepository.delete(donnee);
             demande.setReponse("Donnée supprimée conformément à votre demande.");
         } else {
-            // Modifier la valeur
             if (donnee != null && demande.getNouvelleValeur() != null) {
                 donnee.setValeur(demande.getNouvelleValeur());
                 donneeRepository.save(donnee);
@@ -109,7 +101,6 @@ public class DemandeService {
         demande.setDateTraitement(LocalDate.now());
         Demande saved = demandeRepository.save(demande);
 
-        // Notifier l'usager
         if (demande.getUsager() != null) {
             String msg = "Votre demande de " + demande.getTypeDemande().toLowerCase()
                     + " (#" + demandeId + ") a été acceptée et traitée.";
@@ -120,9 +111,6 @@ public class DemandeService {
         return toResponse(saved);
     }
 
-    // --------------------------------------------------------- //
-    //  UtilisateurMetier rejette la demande                      //
-    // --------------------------------------------------------- //
     @Transactional
     public DemandeResponse rejeterDemande(Long demandeId, String emailUm, String motifRejet) {
 
@@ -135,7 +123,6 @@ public class DemandeService {
         demande.setDateTraitement(LocalDate.now());
         Demande saved = demandeRepository.save(demande);
 
-        // Notifier l'usager
         if (demande.getUsager() != null) {
             String msg = "Votre demande de " + demande.getTypeDemande().toLowerCase()
                     + " (#" + demandeId + ") a été rejetée. Motif : " + motifRejet;
@@ -146,11 +133,13 @@ public class DemandeService {
         return toResponse(saved);
     }
 
-    // --------------------------------------------------------- //
-    //  Consultation                                              //
-    // --------------------------------------------------------- //
     public List<DemandeResponse> listerParUsager(Long usagerId) {
         return demandeRepository.findByUsagerId(usagerId)
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    public List<DemandeResponse> listerParPersonne(Long personneId) {
+        return demandeRepository.findByPersonneId(personneId)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -164,9 +153,6 @@ public class DemandeService {
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // --------------------------------------------------------- //
-    //  Helpers                                                   //
-    // --------------------------------------------------------- //
     private Demande getDemandeOrThrow(Long id) {
         return demandeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Demande introuvable : " + id));
@@ -175,6 +161,8 @@ public class DemandeService {
     private DemandeResponse toResponse(Demande d) {
         String usagerNom = d.getUsager() != null
                 ? d.getUsager().getPrenom() + " " + d.getUsager().getNom() : null;
+        String personneNom = d.getPersonne() != null
+                ? d.getPersonne().getPrenom() + " " + d.getPersonne().getNom() : null;
         String umNom = d.getUtilisateurMetier() != null
                 ? d.getUtilisateurMetier().getPrenom() + " " + d.getUtilisateurMetier().getNom() : null;
         Long donneeId = d.getDonneePersonnelle() != null ? d.getDonneePersonnelle().getIdDonnee() : null;
@@ -192,6 +180,8 @@ public class DemandeService {
                 d.getDateTraitement(),
                 d.getUsager() != null ? d.getUsager().getId() : null,
                 usagerNom,
+                d.getPersonne() != null ? d.getPersonne().getId() : null,
+                personneNom,
                 d.getUtilisateurMetier() != null ? d.getUtilisateurMetier().getId() : null,
                 umNom,
                 donneeId,

@@ -13,14 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/**
- * POST   /api/demandes                              → usager soumet une demande
- * GET    /api/demandes/par-usager?usagerId=         → demandes d'un usager
- * GET    /api/demandes/par-um?umId=                 → demandes reçues par UtilisateurMetier
- * GET    /api/demandes/en-attente?umId=             → demandes EN_COURS pour UtilisateurMetier
- * PUT    /api/demandes/{id}/accepter               → UtilisateurMetier accepte
- * PUT    /api/demandes/{id}/rejeter                → UtilisateurMetier rejette
- */
 @RestController
 @RequestMapping("/api/demandes")
 @RequiredArgsConstructor
@@ -39,6 +31,12 @@ public class DemandeController {
     @PreAuthorize("hasAnyAuthority('ROLE_USAGER','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<List<DemandeResponse>> parUsager(@RequestParam Long usagerId) {
         return ResponseEntity.ok(demandeService.listerParUsager(usagerId));
+    }
+
+    @GetMapping("/par-personne")
+    @PreAuthorize("hasAnyAuthority('ROLE_USAGER','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<List<DemandeResponse>> parPersonne(@RequestParam Long personneId) {
+        return ResponseEntity.ok(demandeService.listerParPersonne(personneId));
     }
 
     @GetMapping("/par-um")

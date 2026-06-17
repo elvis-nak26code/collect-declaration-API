@@ -11,15 +11,18 @@ import java.util.List;
 @Repository
 public interface DonneePersonnelleRepository extends JpaRepository<DonneePersonnelle, Long> {
 
-    /** Toutes les données d'un usager donné. */
     @Query("SELECT d FROM DonneePersonnelle d WHERE d.usager.id = :usagerId ORDER BY d.dateCollecte DESC")
     List<DonneePersonnelle> findByUsagerId(@Param("usagerId") Long usagerId);
 
-    /** Toutes les données d'un traitement donné. */
+    @Query("SELECT d FROM DonneePersonnelle d WHERE d.personne.id = :personneId ORDER BY d.dateCollecte DESC")
+    List<DonneePersonnelle> findByPersonneId(@Param("personneId") Long personneId);
+
     @Query("SELECT d FROM DonneePersonnelle d WHERE d.traitement.idTraitement = :traitementId ORDER BY d.dateCollecte DESC")
     List<DonneePersonnelle> findByTraitementId(@Param("traitementId") Long traitementId);
 
-    /** Données d'un usager pour un traitement précis. */
     @Query("SELECT d FROM DonneePersonnelle d WHERE d.usager.id = :usagerId AND d.traitement.idTraitement = :traitementId")
     List<DonneePersonnelle> findByUsagerIdAndTraitementId(@Param("usagerId") Long usagerId, @Param("traitementId") Long traitementId);
+
+    @Query("SELECT d FROM DonneePersonnelle d WHERE d.personne.id = :personneId AND d.traitement.idTraitement = :traitementId")
+    List<DonneePersonnelle> findByPersonneIdAndTraitementId(@Param("personneId") Long personneId, @Param("traitementId") Long traitementId);
 }

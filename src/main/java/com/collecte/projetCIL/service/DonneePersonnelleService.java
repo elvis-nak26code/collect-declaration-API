@@ -4,10 +4,12 @@ import com.collecte.projetCIL.dto.request.DonneePersonnelleRequest;
 import com.collecte.projetCIL.dto.response.DonneePersonnelleResponse;
 import com.collecte.projetCIL.dto.response.ImportResultResponse;
 import com.collecte.projetCIL.models.DonneePersonnelle;
+import com.collecte.projetCIL.models.Personne;
 import com.collecte.projetCIL.models.Traitement;
 import com.collecte.projetCIL.models.TypeDonnee;
 import com.collecte.projetCIL.models.Usager;
 import com.collecte.projetCIL.repository.DonneePersonnelleRepository;
+import com.collecte.projetCIL.repository.PersonneRepository;
 import com.collecte.projetCIL.repository.TraitementRepository;
 import com.collecte.projetCIL.repository.TypeDonneeRepository;
 import com.collecte.projetCIL.repository.UsagerRepository;
@@ -29,17 +31,12 @@ public class DonneePersonnelleService {
 
     private final DonneePersonnelleRepository donneePersonnelleRepository;
     private final UsagerRepository usagerRepository;
+    private final PersonneRepository personneRepository;
     private final TypeDonneeRepository typeDonneeRepository;
     private final TraitementRepository traitementRepository;
     private final TraitementService traitementService;
 
-    // ------------------------------------------------------------------ //
-    //  Ajouter une donnée par saisie manuelle (liée à un traitement)      //
-    // ------------------------------------------------------------------ //
     public DonneePersonnelleResponse ajouterDonnee(DonneePersonnelleRequest request) {
-
-        Usager usager = usagerRepository.findById(request.getUsagerId())
-                .orElseThrow(() -> new RuntimeException("Usager introuvable : " + request.getUsagerId()));
 
         TypeDonnee typeDonnee = typeDonneeRepository.findById(request.getTypeDonneeId())
                 .orElseThrow(() -> new RuntimeException("TypeDonnee introuvable : " + request.getTypeDonneeId()));
@@ -50,9 +47,21 @@ public class DonneePersonnelleService {
         DonneePersonnelle donnee = new DonneePersonnelle();
         donnee.setValeur(request.getValeur());
         donnee.setDateCollecte(request.getDateCollecte() != null ? request.getDateCollecte() : LocalDateTime.now());
-        donnee.setUsager(usager);
         donnee.setTypeDonnee(typeDonnee);
         donnee.setTraitement(traitement);
+
+        if (request.getPersonneId() != null) {
+            Personne personne = personneRepository.findById(request.getPersonneId())
+                    .orElseThrow(() -> new RuntimeException("Personne introuvable : " + request.getPersonneId()));
+            donnee.setPersonne(personne);
+        } else {
+            Usager usager = usagerRepository.findById(request.getUsagerId())
+                    .orElseThrow(() -> new RuntimeException("Usager introuvable : " + request.getUsagerId()));
+            donnee.setUsager(usager);
+            if (usager.getPersonne() != null) {
+                donnee.setPersonne(usager.getPersonne());
+            }
+        }
 
         DonneePersonnelle saved = donneePersonnelleRepository.save(donnee);
         traitementService.incrementerNombreDonnee(request.getTraitementId(), 1L);
@@ -60,10 +69,6 @@ public class DonneePersonnelleService {
         return toResponse(saved);
     }
 
-    // ------------------------------------------------------------------ //
-    //  Import depuis fichier Excel (.xlsx)                                //
-    //  Colonnes attendues : valeur | dateCollecte (opt) | usagerId | typeDonneeId
-    // ------------------------------------------------------------------ //
     public ImportResultResponse importerDepuisExcel(MultipartFile fichier, Long traitementId) throws IOException {
 
         Traitement traitement = traitementRepository.findById(traitementId)
@@ -108,6 +113,9 @@ public class DonneePersonnelleService {
                     donnee.setValeur(valeur);
                     donnee.setDateCollecte(dateCollecte);
                     donnee.setUsager(usager);
+                    if (usager.getPersonne() != null) {
+                        donnee.setPersonne(usager.getPersonne());
+                    }
                     donnee.setTypeDonnee(typeDonnee);
                     donnee.setTraitement(traitement);
 
@@ -127,33 +135,26 @@ public class DonneePersonnelleService {
         return new ImportResultResponse(totalLignes, lignesImportees, totalLignes - lignesImportees, erreurs);
     }
 
-    // ------------------------------------------------------------------ //
-    //  Lister toutes les données                                          //
-    // ------------------------------------------------------------------ //
     public List<DonneePersonnelleResponse> listerDonnees() {
         return donneePersonnelleRepository.findAll()
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // ------------------------------------------------------------------ //
-    //  Lister les données d'un usager (vue usager sur ses propres données) //
-    // ------------------------------------------------------------------ //
     public List<DonneePersonnelleResponse> listerParUsager(Long usagerId) {
         return donneePersonnelleRepository.findByUsagerId(usagerId)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // ------------------------------------------------------------------ //
-    //  Lister les données d'un traitement                                 //
-    // ------------------------------------------------------------------ //
+    public List<DonneePersonnelleResponse> listerParPersonne(Long personneId) {
+        return donneePersonnelleRepository.findByPersonneId(personneId)
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
     public List<DonneePersonnelleResponse> listerParTraitement(Long traitementId) {
         return donneePersonnelleRepository.findByTraitementId(traitementId)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // ------------------------------------------------------------------ //
-    //  Helpers Excel                                                      //
-    // ------------------------------------------------------------------ //
     private String getCellStringValue(Cell cell) {
         if (cell == null) return null;
         return switch (cell.getCellType()) {
@@ -177,12 +178,12 @@ public class DonneePersonnelleService {
         }
     }
 
-    // ------------------------------------------------------------------ //
-    //  Mapper entité → DTO                                                //
-    // ------------------------------------------------------------------ //
     private DonneePersonnelleResponse toResponse(DonneePersonnelle d) {
-        String nomUsager = (d.getUsager() != null)
+        String nomUsager = d.getUsager() != null
                 ? d.getUsager().getPrenom() + " " + d.getUsager().getNom()
+                : null;
+        String nomPersonne = d.getPersonne() != null
+                ? d.getPersonne().getPrenom() + " " + d.getPersonne().getNom()
                 : null;
         return new DonneePersonnelleResponse(
                 d.getIdDonnee(),
@@ -190,6 +191,8 @@ public class DonneePersonnelleService {
                 d.getDateCollecte(),
                 d.getUsager()    != null ? d.getUsager().getId()              : null,
                 nomUsager,
+                d.getPersonne()  != null ? d.getPersonne().getId()            : null,
+                nomPersonne,
                 d.getTypeDonnee() != null ? d.getTypeDonnee().getIdTypeDonnee() : null,
                 d.getTypeDonnee() != null ? d.getTypeDonnee().getNom()           : null,
                 d.getTypeDonnee() != null ? d.getTypeDonnee().getSensible()      : null,
