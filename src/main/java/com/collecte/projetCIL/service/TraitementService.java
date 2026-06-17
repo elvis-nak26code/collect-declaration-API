@@ -20,6 +20,7 @@ import com.collecte.projetCIL.enums.StatutDeclaration;
 import com.collecte.projetCIL.enums.StatutTraitement;
 import com.collecte.projetCIL.enums.TypeAction;
 import com.collecte.projetCIL.enums.TypeNotification;
+import com.collecte.projetCIL.models.Administrateur;
 import com.collecte.projetCIL.models.DPO;
 import com.collecte.projetCIL.models.Declaration;
 import com.collecte.projetCIL.models.DeclarationAutorisation;
@@ -29,6 +30,7 @@ import com.collecte.projetCIL.models.DeclarationSystemeVideoSurveillance;
 import com.collecte.projetCIL.models.SessionCollecte;
 import com.collecte.projetCIL.models.Traitement;
 import com.collecte.projetCIL.models.UtilisateurMetier;
+import com.collecte.projetCIL.repository.AdministrateurRepository;
 import com.collecte.projetCIL.repository.DPORepository;
 import com.collecte.projetCIL.repository.DeclarationAutorisationRepository;
 import com.collecte.projetCIL.repository.DeclarationCollecteSiteInternetRepository;
@@ -49,6 +51,7 @@ public class TraitementService {
     private final SessionCollecteRepository                     sessionCollecteRepository;
     private final UtilisateurMetierRepository                   utilisateurMetierRepository;
     private final DPORepository                                 dpoRepository;
+    private final AdministrateurRepository                      administrateurRepository;
     private final DeclarationRepository                         declarationRepository;
     private final DeclarationNormaleRepository                  declarationNormaleRepository;
     private final DeclarationCollecteSiteInternetRepository     declarationCollecteSiteInternetRepository;
@@ -462,6 +465,71 @@ public class TraitementService {
                 + ". Une déclaration attend votre complétion.");
 
         return toResponse(traitement, declaration != null ? declaration.getIdDeclaration() : null);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Helper : vérifier si la déclaration associée est modifiable
+    //  (admin toujours autorisé ; les autres rôles seulement si statut
+    //   n'a pas encore été validé par DG ou CIL)
+    // ------------------------------------------------------------------ //
+    private void verifierDeclarationModifiable(Traitement traitement, boolean isAdmin) {
+        if (isAdmin) return;
+        declarationRepository.findByTraitementId(traitement.getIdTraitement()).ifPresent(decl -> {
+            StatutDeclaration s = decl.getStatut();
+            if (s == StatutDeclaration.APPROUVEE_DG
+                    || s == StatutDeclaration.EN_VERIFICATION_CIL
+                    || s == StatutDeclaration.VALIDEE_CIL
+                    || s == StatutDeclaration.APPROUVEE) {
+                throw new RuntimeException(
+                        "Impossible de modifier/supprimer : la déclaration a déjà été validée (statut : " + s + ").");
+            }
+        });
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Mettre à jour un traitement (champs métier uniquement)
+    // ------------------------------------------------------------------ //
+    @Transactional
+    public TraitementResponse updateTraitement(Long id, TraitementRequest request, String emailUser) {
+        Traitement traitement = traitementRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + id));
+
+        boolean isAdmin = administrateurRepository.findByEmail(emailUser).isPresent();
+        verifierDeclarationModifiable(traitement, isAdmin);
+
+        // Mise à jour des champs modifiables
+        if (request.getNom() != null) traitement.setNom(request.getNom());
+        if (request.getDepartment() != null) traitement.setDepartment(request.getDepartment());
+        if (request.getDescription() != null) traitement.setDescription(request.getDescription());
+        if (request.getTexte() != null) traitement.setTexte(request.getTexte());
+        if (request.getCertificationSecurite() != null) traitement.setCertificationSecurite(request.getCertificationSecurite());
+        if (request.getDureeConservation() != null) traitement.setDureeConservation(request.getDureeConservation());
+        if (request.getDateFin() != null) traitement.setDateFin(request.getDateFin());
+
+        Traitement saved = traitementRepository.save(traitement);
+
+        journalAuditService.enregistrer(traitement.getUtilisateurMetier(), TypeAction.MODIFICATION,
+                ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        return toResponse(saved, null);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  Supprimer un traitement (et sa déclaration associée)
+    // ------------------------------------------------------------------ //
+    @Transactional
+    public void deleteTraitement(Long id, String emailUser) {
+        Traitement traitement = traitementRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + id));
+
+        boolean isAdmin = administrateurRepository.findByEmail(emailUser).isPresent();
+        verifierDeclarationModifiable(traitement, isAdmin);
+
+        declarationRepository.findByTraitementId(id).ifPresent(declarationRepository::delete);
+        traitementRepository.delete(traitement);
+
+        journalAuditService.enregistrer(traitement.getUtilisateurMetier(), TypeAction.SUPPRESSION,
+                ModuleConserne.DECLARATION, ResultatAction.SUCCES);
     }
 
     // ------------------------------------------------------------------ //

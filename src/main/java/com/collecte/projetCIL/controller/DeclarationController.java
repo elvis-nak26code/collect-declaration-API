@@ -75,6 +75,55 @@ public class DeclarationController {
         return ResponseEntity.ok(declarationService.creerDeclarationAutorisation(request, userDetails.getUsername()));
     }
 
+    // ── Modification (DPO, Admin) ────────────────────────────────────── //
+
+    @PutMapping("/{id}/normale")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<DeclarationResponse> modifierNormale(
+            @PathVariable Long id,
+            @RequestBody DeclarationNormaleRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(declarationService.updateDeclarationNormale(id, request, userDetails.getUsername()));
+    }
+
+    @PutMapping("/{id}/collecte-site")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<DeclarationResponse> modifierCollecteSite(
+            @PathVariable Long id,
+            @RequestBody DeclarationCollecteSiteInternetRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(declarationService.updateDeclarationCollecteSite(id, request, userDetails.getUsername()));
+    }
+
+    @PutMapping("/{id}/video-surveillance")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<DeclarationResponse> modifierVideoSurveillance(
+            @PathVariable Long id,
+            @RequestBody DeclarationVideoSurveillanceRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(declarationService.updateDeclarationVideoSurveillance(id, request, userDetails.getUsername()));
+    }
+
+    @PutMapping("/{id}/autorisation")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<DeclarationResponse> modifierAutorisation(
+            @PathVariable Long id,
+            @RequestBody DeclarationAutorisationRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(declarationService.updateDeclarationAutorisation(id, request, userDetails.getUsername()));
+    }
+
+    // ── Suppression (DPO, Admin) ──────────────────────────────────────── //
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Void> deleteDeclaration(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        declarationService.deleteDeclaration(id, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
     // ── Consultation ──────────────────────────────────────────────────── //
 
     @GetMapping("/mes-declarations")

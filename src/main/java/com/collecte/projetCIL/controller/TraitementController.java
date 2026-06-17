@@ -4,10 +4,15 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -164,6 +169,32 @@ public class TraitementController {
             @PathVariable Long id,
             @RequestParam(required = false) Long dpoId) {
         return ResponseEntity.ok(traitementService.envoyerAuDpo(id, dpoId));
+    }
+
+    // ------------------------------------------------------------------ //
+    //  PUT /api/traitements/{id}
+    //  Mise à jour complète d'un traitement (champs métier)
+    // ------------------------------------------------------------------ //
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_UTILISATEUR_METIER','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<TraitementResponse> updateTraitement(
+            @PathVariable Long id,
+            @RequestBody TraitementRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(traitementService.updateTraitement(id, request, userDetails.getUsername()));
+    }
+
+    // ------------------------------------------------------------------ //
+    //  DELETE /api/traitements/{id}
+    //  Supprime un traitement et sa déclaration associée
+    // ------------------------------------------------------------------ //
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_UTILISATEUR_METIER','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<Void> deleteTraitement(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        traitementService.deleteTraitement(id, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
     }
 
     // GET /api/traitements — tous les traitements envoyés au DPO (DPO / Admin)

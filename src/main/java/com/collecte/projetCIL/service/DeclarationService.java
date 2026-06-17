@@ -25,6 +25,7 @@ public class DeclarationService {
     private final DeclarationRepository                      declarationRepo;
     private final TraitementRepository                       traitementRepo;
     private final DPORepository                              dpoRepo;
+    private final AdministrateurRepository                   administrateurRepo;
     private final DGRepository                               dgRepo;
     private final CILRepository                              cilRepo;
     private final UtilisateurMetierRepository                utilisateurMetierRepo;
@@ -368,6 +369,200 @@ public class DeclarationService {
     }
 
     // ================================================================== //
+    //  UPDATE DÉCLARATIONS (4 sous-types)
+    // ================================================================== //
+
+    private void verifierModifiable(Declaration d, boolean isAdmin) {
+        if (isAdmin) return;
+        StatutDeclaration s = d.getStatut();
+        if (s == StatutDeclaration.APPROUVEE_DG
+                || s == StatutDeclaration.EN_VERIFICATION_CIL
+                || s == StatutDeclaration.VALIDEE_CIL
+                || s == StatutDeclaration.APPROUVEE) {
+            throw new RuntimeException(
+                    "Impossible de modifier/supprimer : la déclaration a déjà été validée (statut : " + s + ").");
+        }
+    }
+
+    @Transactional
+    public DeclarationResponse updateDeclarationNormale(Long id, DeclarationNormaleRequest req, String emailUser) {
+        DeclarationNormale d = normaleRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Déclaration normale introuvable : " + id));
+
+        boolean isAdmin = administrateurRepo.findByEmail(emailUser).isPresent();
+        verifierModifiable(d, isAdmin);
+
+        d.setDenominationTraitement(req.getDenominationTraitement());
+        d.setFinaliteTraitement(req.getFinaliteTraitement());
+        d.setTexteJuridique(req.getTexteJuridique());
+        d.setCategoriesPersonnesConcernees(req.getCategoriesPersonnesConcernees());
+        d.setNombrePersonnesConcernees(req.getNombrePersonnesConcernees());
+        d.setTypeTraitement(req.getTypeTraitement());
+        d.setDescriptionProcedureManuelle(req.getDescriptionProcedureManuelle());
+        d.setCaracteristiquesTechniques(req.getCaracteristiquesTechniques());
+        d.setCaracteristiquesSysteme(req.getCaracteristiquesSysteme());
+        d.setPolitiqueAccesSystemes(req.getPolitiqueAccesSystemes());
+        d.setModalitesDiffusionResultats(req.getModalitesDiffusionResultats());
+        d.setProtocoleRecherche(req.getProtocoleRecherche());
+        d.setDescriptionConnexionFichiers(req.getDescriptionConnexionFichiers());
+        d.setMotifsInterconnexion(req.getMotifsInterconnexion());
+        d.setIdentiteFichiersInterconnexion(req.getIdentiteFichiersInterconnexion());
+        mettreAJourChampsBase(d, req);
+
+        DeclarationNormale saved = normaleRepo.save(d);
+
+        DPO dpo = d.getDpo();
+        journalAuditService.enregistrer(dpo, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        return toResponse(saved, "NORMALE", saved.getTraitement());
+    }
+
+    @Transactional
+    public DeclarationResponse updateDeclarationCollecteSite(Long id, DeclarationCollecteSiteInternetRequest req, String emailUser) {
+        DeclarationCollecteSiteInternet d = collecteSiteRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Déclaration collecte site introuvable : " + id));
+
+        boolean isAdmin = administrateurRepo.findByEmail(emailUser).isPresent();
+        verifierModifiable(d, isAdmin);
+
+        d.setDenominationTraitement(req.getDenominationTraitement());
+        d.setFinaliteTraitement(req.getFinaliteTraitement());
+        d.setTexteJuridique(req.getTexteJuridique());
+        d.setCategoriesPersonnesConcernees(req.getCategoriesPersonnesConcernees());
+        d.setCaracteristiquesMainStructure(req.getCaracteristiquesMainStructure());
+        d.setCaracteristiquesTechniques(req.getCaracteristiquesTechniques());
+        d.setTypeTraitement(req.getTypeTraitement());
+        d.setDonneesConnexion(req.getDonneesConnexion());
+        d.setDescriptionDonneesConnexion(req.getDescriptionDonneesConnexion());
+        d.setCookies(req.getCookies());
+        d.setDescriptionCookies(req.getDescriptionCookies());
+        d.setDureeConservationCookies(req.getDureeConservationCookies());
+        d.setTelechargementTraitement(req.getTelechargementTraitement());
+        mettreAJourChampsBase(d, req);
+
+        DeclarationCollecteSiteInternet saved = collecteSiteRepo.save(d);
+
+        DPO dpo = d.getDpo();
+        journalAuditService.enregistrer(dpo, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        return toResponse(saved, "COLLECTE_SITE", saved.getTraitement());
+    }
+
+    @Transactional
+    public DeclarationResponse updateDeclarationVideoSurveillance(Long id, DeclarationVideoSurveillanceRequest req, String emailUser) {
+        DeclarationSystemeVideoSurveillance d = videoRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Déclaration vidéo surveillance introuvable : " + id));
+
+        boolean isAdmin = administrateurRepo.findByEmail(emailUser).isPresent();
+        verifierModifiable(d, isAdmin);
+
+        d.setFinalites(req.getFinalites());
+        d.setAdresseInstallation(req.getAdresseInstallation());
+        d.setNatureEnvironnement(req.getNatureEnvironnement());
+        d.setEmplacementCameras(req.getEmplacementCameras());
+        d.setNombreTotalCameras(req.getNombreTotalCameras());
+        d.setModeleDispositif(req.getModeleDispositif());
+        d.setVisualisationTempsReel(req.getVisualisationTempsReel());
+        d.setModeTransfert(req.getModeTransfert());
+        d.setSonDeSon(req.getSonDeSon());
+        d.setTypeEnregistrement(req.getTypeEnregistrement());
+        d.setNatureEnregistrement(req.getNatureEnregistrement());
+        d.setLiaisonReseau(req.getLiaisonReseau());
+        d.setUtilisationSystemesExperts(req.getUtilisationSystemesExperts());
+        d.setDescriptionSystemesExperts(req.getDescriptionSystemesExperts());
+        d.setFonctionnalitesTraitement(req.getFonctionnalitesTraitement());
+        d.setAccesImagesDistance(req.getAccesImagesDistance());
+        d.setAccesPhysique(req.getAccesPhysique());
+        d.setAccesLogique(req.getAccesLogique());
+        d.setMesuresSuppression(req.getMesuresSuppression());
+        d.setAttribute(req.getAttribute());
+        d.setLocalisationPictogrammes(req.getLocalisationPictogrammes());
+        mettreAJourChampsBase(d, req);
+
+        DeclarationSystemeVideoSurveillance saved = videoRepo.save(d);
+
+        DPO dpo = d.getDpo();
+        journalAuditService.enregistrer(dpo, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        return toResponse(saved, "VIDEO_SURVEILLANCE", saved.getTraitement());
+    }
+
+    @Transactional
+    public DeclarationResponse updateDeclarationAutorisation(Long id, DeclarationAutorisationRequest req, String emailUser) {
+        DeclarationAutorisation d = autorisationRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Déclaration autorisation introuvable : " + id));
+
+        boolean isAdmin = administrateurRepo.findByEmail(emailUser).isPresent();
+        verifierModifiable(d, isAdmin);
+
+        d.setDenominationTraitement(req.getDenominationTraitement());
+        d.setFinaliteTraitement(req.getFinaliteTraitement());
+        d.setTexteJuridique(req.getTexteJuridique());
+        d.setCategoriesPersonnesConcernees(req.getCategoriesPersonnesConcernees());
+        d.setNombrePersonnesConcernees(req.getNombrePersonnesConcernees());
+        d.setTypeTraitement(req.getTypeTraitement());
+        d.setCaracteristiquesTechniques(req.getCaracteristiquesTechniques());
+        d.setFonctionnalitesSysteme(req.getFonctionnalitesSysteme());
+        d.setCertificationSecurite(req.getCertificationSecurite());
+        d.setPolitiqueAccesSystemes(req.getPolitiqueAccesSystemes());
+        d.setDescriptionFichier(req.getDescriptionFichier());
+        d.setModeTransfert(req.getModeTransfert());
+        d.setTraitementDonneesSante(req.getTraitementDonneesSante());
+        d.setProfessionalSante(req.getProfessionalSante());
+        d.setModalitesDiffusionResultats(req.getModalitesDiffusionResultats());
+        d.setDestinataireAdresse(req.getDestinataireAdresse());
+        d.setTexteJuridiqueCommunication(req.getTexteJuridiqueCommunication());
+        d.setDestinataireNomPrenom(req.getDestinataireNomPrenom());
+        d.setConnexionFichiers(req.getConnexionFichiers());
+        d.setCategoriesDonneesInterconnexion(req.getCategoriesDonneesInterconnexion());
+        d.setDureeInterconnexion(req.getDureeInterconnexion());
+        d.setIdentiteFichiersInterconnexion(req.getIdentiteFichiersInterconnexion());
+        d.setTransfertPaysEtranger(req.getTransfertPaysEtranger());
+        d.setRecoursSousTraitant(req.getRecoursSousTraitant());
+        d.setRolesSousTraitants(req.getRolesSousTraitants());
+        d.setCategoriesPersonnesAcces(req.getCategoriesPersonnesAcces());
+        d.setPolitiqueAccesBatiments(req.getPolitiqueAccesBatiments());
+        d.setMesuresSecurite(req.getMesuresSecurite());
+        d.setDescriptionSensibilisation(req.getDescriptionSensibilisation());
+        d.setPaysDestinationProtectionDonnees(req.getPaysDestinationProtectionDonnees());
+        d.setDescriptionFichierTransfert(req.getDescriptionFichierTransfert());
+        d.setNombrePersonnesTransfert(req.getNombrePersonnesTransfert());
+        d.setCategoriesDonneesTransfert(req.getCategoriesDonneesTransfert());
+        d.setFondementJuridique(req.getFondementJuridique());
+        d.setConsentementPersonnesConcernees(req.getConsentementPersonnesConcernees());
+        d.setMethodeRecueilConsentement(req.getMethodeRecueilConsentement());
+        d.setMesuresSecuriteTransfert(req.getMesuresSecuriteTransfert());
+        d.setDureeConservationSante(req.getDureeConservationSante());
+        d.setOrigineDonnees(req.getOrigineDonnees());
+        mettreAJourChampsBase(d, req);
+
+        DeclarationAutorisation saved = autorisationRepo.save(d);
+
+        DPO dpo = d.getDpo();
+        journalAuditService.enregistrer(dpo, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        return toResponse(saved, "AUTORISATION", saved.getTraitement());
+    }
+
+    // ================================================================== //
+    //  SUPPRESSION DÉCLARATION
+    // ================================================================== //
+
+    @Transactional
+    public void deleteDeclaration(Long id, String emailUser) {
+        Declaration d = declarationRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Déclaration introuvable : " + id));
+
+        boolean isAdmin = administrateurRepo.findByEmail(emailUser).isPresent();
+        verifierModifiable(d, isAdmin);
+
+        declarationRepo.delete(d);
+
+        DPO dpo = d.getDpo();
+        journalAuditService.enregistrer(dpo, TypeAction.SUPPRESSION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+    }
+
+    // ================================================================== //
     //  HELPERS PRIVÉS
     // ================================================================== //
     private void postCreation(DPO dpo, Traitement trt, Declaration saved, String type) {
@@ -379,6 +574,135 @@ public class DeclarationService {
                         "Nouvelle déclaration de type " + type + " soumise par "
                         + dpo.getPrenom() + " " + dpo.getNom()
                         + " — en attente de votre validation. (#" + saved.getIdDeclaration() + ")"));
+    }
+
+    private void mettreAJourChampsBase(Declaration d, Object req) {
+        if (req instanceof DeclarationNormaleRequest r) {
+            if (r.getDateSoumission() != null) d.setDateSoumission(r.getDateSoumission());
+            if (r.getSecteur() != null) d.setSecteur(r.getSecteur());
+            if (r.getNatureDemande() != null) d.setNatureDemande(r.getNatureDemande());
+            if (r.getResponsableDeclaration() != null) d.setResponsableDeclaration(r.getResponsableDeclaration());
+            if (r.getContactConfidentialite() != null) d.setContactConfidentialite(r.getContactConfidentialite());
+            if (r.getDateMiseEnOeuvre() != null) d.setDateMiseEnOeuvre(r.getDateMiseEnOeuvre());
+            if (r.getCategoriesDonnees() != null) d.setCategoriesDonnees(r.getCategoriesDonnees());
+            if (r.getOrigineDonnees() != null) d.setOrigineDonnees(r.getOrigineDonnees());
+            if (r.getDureeConservation() != null) d.setDureeConservation(r.getDureeConservation());
+            if (r.getLieuStockage() != null) d.setLieuStockage(r.getLieuStockage());
+            if (r.getCommunicationAutresOrganismes() != null) d.setCommunicationAutresOrganismes(r.getCommunicationAutresOrganismes());
+            if (r.getDestinataireNom() != null) d.setDestinataireNom(r.getDestinataireNom());
+            if (r.getDestinataireAdresse() != null) d.setDestinataireAdresse(r.getDestinataireAdresse());
+            if (r.getTexteJuridiqueCommunication() != null) d.setTexteJuridiqueCommunication(r.getTexteJuridiqueCommunication());
+            if (r.getFinaliteCommunication() != null) d.setFinaliteCommunication(r.getFinaliteCommunication());
+            if (r.getDestinataireConformeCil() != null) d.setDestinataireConformeCil(r.getDestinataireConformeCil());
+            if (r.getTransfertPaysEtranger() != null) d.setTransfertPaysEtranger(r.getTransfertPaysEtranger());
+            if (r.getRecoursSousTraitant() != null) d.setRecoursSousTraitant(r.getRecoursSousTraitant());
+            if (r.getContratConfidentialiteSousTraitant() != null) d.setContratConfidentialiteSousTraitant(r.getContratConfidentialiteSousTraitant());
+            if (r.getRolesSousTraitants() != null) d.setRolesSousTraitants(r.getRolesSousTraitants());
+            if (r.getCategoriesPersonnesAcces() != null) d.setCategoriesPersonnesAcces(r.getCategoriesPersonnesAcces());
+            if (r.getPolitiqueAccesBatiments() != null) d.setPolitiqueAccesBatiments(r.getPolitiqueAccesBatiments());
+            if (r.getMesuresSecurite() != null) d.setMesuresSecurite(r.getMesuresSecurite());
+            if (r.getMesuresSensibilisation() != null) d.setMesuresSensibilisation(r.getMesuresSensibilisation());
+            if (r.getMoyensInformationDroits() != null) d.setMoyensInformationDroits(r.getMoyensInformationDroits());
+            if (r.getMoyensExerciceDroits() != null) d.setMoyensExerciceDroits(r.getMoyensExerciceDroits());
+            if (r.getCoordonneesExerciceDroits() != null) d.setCoordonneesExerciceDroits(r.getCoordonneesExerciceDroits());
+            if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
+            if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
+            if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
+        } else if (req instanceof DeclarationCollecteSiteInternetRequest r) {
+            if (r.getDateSoumission() != null) d.setDateSoumission(r.getDateSoumission());
+            if (r.getSecteur() != null) d.setSecteur(r.getSecteur());
+            if (r.getNatureDemande() != null) d.setNatureDemande(r.getNatureDemande());
+            if (r.getResponsableDeclaration() != null) d.setResponsableDeclaration(r.getResponsableDeclaration());
+            if (r.getContactConfidentialite() != null) d.setContactConfidentialite(r.getContactConfidentialite());
+            if (r.getDateMiseEnOeuvre() != null) d.setDateMiseEnOeuvre(r.getDateMiseEnOeuvre());
+            if (r.getCategoriesDonnees() != null) d.setCategoriesDonnees(r.getCategoriesDonnees());
+            if (r.getOrigineDonnees() != null) d.setOrigineDonnees(r.getOrigineDonnees());
+            if (r.getDureeConservation() != null) d.setDureeConservation(r.getDureeConservation());
+            if (r.getLieuStockage() != null) d.setLieuStockage(r.getLieuStockage());
+            if (r.getCommunicationAutresOrganismes() != null) d.setCommunicationAutresOrganismes(r.getCommunicationAutresOrganismes());
+            if (r.getDestinataireNom() != null) d.setDestinataireNom(r.getDestinataireNom());
+            if (r.getDestinataireAdresse() != null) d.setDestinataireAdresse(r.getDestinataireAdresse());
+            if (r.getTexteJuridiqueCommunication() != null) d.setTexteJuridiqueCommunication(r.getTexteJuridiqueCommunication());
+            if (r.getFinaliteCommunication() != null) d.setFinaliteCommunication(r.getFinaliteCommunication());
+            if (r.getDestinataireConformeCil() != null) d.setDestinataireConformeCil(r.getDestinataireConformeCil());
+            if (r.getTransfertPaysEtranger() != null) d.setTransfertPaysEtranger(r.getTransfertPaysEtranger());
+            if (r.getRecoursSousTraitant() != null) d.setRecoursSousTraitant(r.getRecoursSousTraitant());
+            if (r.getContratConfidentialiteSousTraitant() != null) d.setContratConfidentialiteSousTraitant(r.getContratConfidentialiteSousTraitant());
+            if (r.getRolesSousTraitants() != null) d.setRolesSousTraitants(r.getRolesSousTraitants());
+            if (r.getCategoriesPersonnesAcces() != null) d.setCategoriesPersonnesAcces(r.getCategoriesPersonnesAcces());
+            if (r.getPolitiqueAccesBatiments() != null) d.setPolitiqueAccesBatiments(r.getPolitiqueAccesBatiments());
+            if (r.getMesuresSecurite() != null) d.setMesuresSecurite(r.getMesuresSecurite());
+            if (r.getMesuresSensibilisation() != null) d.setMesuresSensibilisation(r.getMesuresSensibilisation());
+            if (r.getMoyensInformationDroits() != null) d.setMoyensInformationDroits(r.getMoyensInformationDroits());
+            if (r.getMoyensExerciceDroits() != null) d.setMoyensExerciceDroits(r.getMoyensExerciceDroits());
+            if (r.getCoordonneesExerciceDroits() != null) d.setCoordonneesExerciceDroits(r.getCoordonneesExerciceDroits());
+            if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
+            if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
+            if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
+        } else if (req instanceof DeclarationVideoSurveillanceRequest r) {
+            if (r.getDateSoumission() != null) d.setDateSoumission(r.getDateSoumission());
+            if (r.getSecteur() != null) d.setSecteur(r.getSecteur());
+            if (r.getNatureDemande() != null) d.setNatureDemande(r.getNatureDemande());
+            if (r.getResponsableDeclaration() != null) d.setResponsableDeclaration(r.getResponsableDeclaration());
+            if (r.getContactConfidentialite() != null) d.setContactConfidentialite(r.getContactConfidentialite());
+            if (r.getDateMiseEnOeuvre() != null) d.setDateMiseEnOeuvre(r.getDateMiseEnOeuvre());
+            if (r.getCategoriesDonnees() != null) d.setCategoriesDonnees(r.getCategoriesDonnees());
+            if (r.getOrigineDonnees() != null) d.setOrigineDonnees(r.getOrigineDonnees());
+            if (r.getDureeConservation() != null) d.setDureeConservation(r.getDureeConservation());
+            if (r.getLieuStockage() != null) d.setLieuStockage(r.getLieuStockage());
+            if (r.getCommunicationAutresOrganismes() != null) d.setCommunicationAutresOrganismes(r.getCommunicationAutresOrganismes());
+            if (r.getDestinataireNom() != null) d.setDestinataireNom(r.getDestinataireNom());
+            if (r.getDestinataireAdresse() != null) d.setDestinataireAdresse(r.getDestinataireAdresse());
+            if (r.getTexteJuridiqueCommunication() != null) d.setTexteJuridiqueCommunication(r.getTexteJuridiqueCommunication());
+            if (r.getFinaliteCommunication() != null) d.setFinaliteCommunication(r.getFinaliteCommunication());
+            if (r.getDestinataireConformeCil() != null) d.setDestinataireConformeCil(r.getDestinataireConformeCil());
+            if (r.getTransfertPaysEtranger() != null) d.setTransfertPaysEtranger(r.getTransfertPaysEtranger());
+            if (r.getRecoursSousTraitant() != null) d.setRecoursSousTraitant(r.getRecoursSousTraitant());
+            if (r.getContratConfidentialiteSousTraitant() != null) d.setContratConfidentialiteSousTraitant(r.getContratConfidentialiteSousTraitant());
+            if (r.getRolesSousTraitants() != null) d.setRolesSousTraitants(r.getRolesSousTraitants());
+            if (r.getCategoriesPersonnesAcces() != null) d.setCategoriesPersonnesAcces(r.getCategoriesPersonnesAcces());
+            if (r.getPolitiqueAccesBatiments() != null) d.setPolitiqueAccesBatiments(r.getPolitiqueAccesBatiments());
+            if (r.getMesuresSecurite() != null) d.setMesuresSecurite(r.getMesuresSecurite());
+            if (r.getMesuresSensibilisation() != null) d.setMesuresSensibilisation(r.getMesuresSensibilisation());
+            if (r.getMoyensInformationDroits() != null) d.setMoyensInformationDroits(r.getMoyensInformationDroits());
+            if (r.getMoyensExerciceDroits() != null) d.setMoyensExerciceDroits(r.getMoyensExerciceDroits());
+            if (r.getCoordonneesExerciceDroits() != null) d.setCoordonneesExerciceDroits(r.getCoordonneesExerciceDroits());
+            if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
+            if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
+            if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
+        } else if (req instanceof DeclarationAutorisationRequest r) {
+            if (r.getDateSoumission() != null) d.setDateSoumission(r.getDateSoumission());
+            if (r.getSecteur() != null) d.setSecteur(r.getSecteur());
+            if (r.getNatureDemande() != null) d.setNatureDemande(r.getNatureDemande());
+            if (r.getResponsableDeclaration() != null) d.setResponsableDeclaration(r.getResponsableDeclaration());
+            if (r.getContactConfidentialite() != null) d.setContactConfidentialite(r.getContactConfidentialite());
+            if (r.getDateMiseEnOeuvre() != null) d.setDateMiseEnOeuvre(r.getDateMiseEnOeuvre());
+            if (r.getCategoriesDonnees() != null) d.setCategoriesDonnees(r.getCategoriesDonnees());
+            if (r.getOrigineDonnees() != null) d.setOrigineDonnees(r.getOrigineDonnees());
+            if (r.getDureeConservation() != null) d.setDureeConservation(r.getDureeConservation());
+            if (r.getLieuStockage() != null) d.setLieuStockage(r.getLieuStockage());
+            if (r.getCommunicationAutresOrganismes() != null) d.setCommunicationAutresOrganismes(r.getCommunicationAutresOrganismes());
+            if (r.getDestinataireNom() != null) d.setDestinataireNom(r.getDestinataireNom());
+            if (r.getDestinataireAdresse() != null) d.setDestinataireAdresse(r.getDestinataireAdresse());
+            if (r.getTexteJuridiqueCommunication() != null) d.setTexteJuridiqueCommunication(r.getTexteJuridiqueCommunication());
+            if (r.getFinaliteCommunication() != null) d.setFinaliteCommunication(r.getFinaliteCommunication());
+            if (r.getDestinataireConformeCil() != null) d.setDestinataireConformeCil(r.getDestinataireConformeCil());
+            if (r.getTransfertPaysEtranger() != null) d.setTransfertPaysEtranger(r.getTransfertPaysEtranger());
+            if (r.getRecoursSousTraitant() != null) d.setRecoursSousTraitant(r.getRecoursSousTraitant());
+            if (r.getContratConfidentialiteSousTraitant() != null) d.setContratConfidentialiteSousTraitant(r.getContratConfidentialiteSousTraitant());
+            if (r.getRolesSousTraitants() != null) d.setRolesSousTraitants(r.getRolesSousTraitants());
+            if (r.getCategoriesPersonnesAcces() != null) d.setCategoriesPersonnesAcces(r.getCategoriesPersonnesAcces());
+            if (r.getPolitiqueAccesBatiments() != null) d.setPolitiqueAccesBatiments(r.getPolitiqueAccesBatiments());
+            if (r.getMesuresSecurite() != null) d.setMesuresSecurite(r.getMesuresSecurite());
+            if (r.getMesuresSensibilisation() != null) d.setMesuresSensibilisation(r.getMesuresSensibilisation());
+            if (r.getMoyensInformationDroits() != null) d.setMoyensInformationDroits(r.getMoyensInformationDroits());
+            if (r.getMoyensExerciceDroits() != null) d.setMoyensExerciceDroits(r.getMoyensExerciceDroits());
+            if (r.getCoordonneesExerciceDroits() != null) d.setCoordonneesExerciceDroits(r.getCoordonneesExerciceDroits());
+            if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
+            if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
+            if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
+            if (r.getDescriptionSensibilisation() != null) d.setDescriptionSensibilisation(r.getDescriptionSensibilisation());
+        }
     }
 
     private void remplirChampBase(Declaration d,
