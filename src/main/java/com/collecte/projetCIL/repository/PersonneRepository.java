@@ -4,6 +4,7 @@ import com.collecte.projetCIL.models.Personne;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -12,4 +13,7 @@ public interface PersonneRepository extends JpaRepository<Personne, Long> {
     Optional<Personne> findByEmail(String email);
 
     Optional<Personne> findByTelephone(String telephone);
+
+    List<Personne> findByNomContainingIgnoreCaseOrPrenomContainingIgnoreCaseOrEmailContainingIgnoreCaseOrTelephoneContainingIgnoreCase(
+            String nom, String prenom, String email, String telephone);
 }

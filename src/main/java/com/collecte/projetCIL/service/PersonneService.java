@@ -1,12 +1,16 @@
 package com.collecte.projetCIL.service;
 
+import com.collecte.projetCIL.dto.request.PersonneRequest;
+import com.collecte.projetCIL.dto.response.PersonneResponse;
 import com.collecte.projetCIL.models.Personne;
 import com.collecte.projetCIL.repository.PersonneRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,5 +47,40 @@ public class PersonneService {
             if (existant.isPresent()) return existant.get();
         }
         return creerPersonne(nom, prenom, email, telephone);
+    }
+
+    /**
+     * Recherche utilisée par le front (autocomplétion). Sans paramètre, renvoie
+     * une liste bornée des dernières personnes connues pour éviter de tout charger.
+     */
+    public List<PersonneResponse> rechercher(String q) {
+        List<Personne> resultats;
+        if (q == null || q.isBlank()) {
+            resultats = personneRepository.findAll().stream().limit(50).collect(Collectors.toList());
+        } else {
+            resultats = personneRepository
+                    .findByNomContainingIgnoreCaseOrPrenomContainingIgnoreCaseOrEmailContainingIgnoreCaseOrTelephoneContainingIgnoreCase(
+                            q, q, q, q);
+        }
+        return resultats.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    /**
+     * Création depuis le front : dédoublonne automatiquement sur email/téléphone
+     * pour éviter de créer deux fiches pour la même personne.
+     */
+    public PersonneResponse creerDepuisRequest(PersonneRequest request) {
+        Personne p = creerOuRecuperer(request.getNom(), request.getPrenom(), request.getEmail(), request.getTelephone());
+        if (request.getNumeroIdentite() != null && !request.getNumeroIdentite().isBlank()) {
+            p.setNumeroIdentite(request.getNumeroIdentite());
+        }
+        p.setDateModification(LocalDateTime.now());
+        p = personneRepository.save(p);
+        return toResponse(p);
+    }
+
+    private PersonneResponse toResponse(Personne p) {
+        String nomComplet = ((p.getPrenom() != null ? p.getPrenom() : "") + " " + (p.getNom() != null ? p.getNom() : "")).trim();
+        return new PersonneResponse(p.getId(), p.getNom(), p.getPrenom(), nomComplet, p.getEmail(), p.getTelephone());
     }
 }
