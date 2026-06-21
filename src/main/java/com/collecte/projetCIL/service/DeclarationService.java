@@ -1,18 +1,45 @@
 package com.collecte.projetCIL.service;
 
-import com.collecte.projetCIL.dto.request.*;
-import com.collecte.projetCIL.dto.response.DeclarationResponse;
-import com.collecte.projetCIL.enums.*;
-import com.collecte.projetCIL.models.*;
-import com.collecte.projetCIL.repository.*;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import com.collecte.projetCIL.dto.request.DeclarationAutorisationRequest;
+import com.collecte.projetCIL.dto.request.DeclarationCollecteSiteInternetRequest;
+import com.collecte.projetCIL.dto.request.DeclarationNormaleRequest;
+import com.collecte.projetCIL.dto.request.DeclarationVideoSurveillanceRequest;
+import com.collecte.projetCIL.dto.response.DeclarationResponse;
+import com.collecte.projetCIL.enums.ModuleConserne;
+import com.collecte.projetCIL.enums.NatureDemande;
+import com.collecte.projetCIL.enums.ResultatAction;
+import com.collecte.projetCIL.enums.StatutDeclaration;
+import com.collecte.projetCIL.enums.TypeAction;
+import com.collecte.projetCIL.enums.TypeNotification;
+import com.collecte.projetCIL.models.CIL;
+import com.collecte.projetCIL.models.DG;
+import com.collecte.projetCIL.models.DPO;
+import com.collecte.projetCIL.models.Declaration;
+import com.collecte.projetCIL.models.DeclarationAutorisation;
+import com.collecte.projetCIL.models.DeclarationCollecteSiteInternet;
+import com.collecte.projetCIL.models.DeclarationNormale;
+import com.collecte.projetCIL.models.DeclarationSystemeVideoSurveillance;
+import com.collecte.projetCIL.models.Traitement;
+import com.collecte.projetCIL.repository.AdministrateurRepository;
+import com.collecte.projetCIL.repository.CILRepository;
+import com.collecte.projetCIL.repository.DGRepository;
+import com.collecte.projetCIL.repository.DPORepository;
+import com.collecte.projetCIL.repository.DeclarationAutorisationRepository;
+import com.collecte.projetCIL.repository.DeclarationCollecteSiteInternetRepository;
+import com.collecte.projetCIL.repository.DeclarationNormaleRepository;
+import com.collecte.projetCIL.repository.DeclarationRepository;
+import com.collecte.projetCIL.repository.DeclarationSystemeVideoSurveillanceRepository;
+import com.collecte.projetCIL.repository.TraitementRepository;
+import com.collecte.projetCIL.repository.UtilisateurMetierRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -706,20 +733,20 @@ public class DeclarationService {
     }
 
     private void remplirChampBase(Declaration d,
-                                  LocalDate dateSoumission, String secteur, NatureDemande nature,
-                                  String responsable, String contact, LocalDate dateMiseEnOeuvre,
-                                  String categoriesDonnees, String origineDonnees, String dureeConservation,
-                                  String lieuStockage, Boolean communicationAutresOrganismes,
-                                  String destinataireNom, String destinataireAdresse,
-                                  String texteJuridiqueCommunication, String finaliteCommunication,
-                                  Boolean destinataireConformeCil, Boolean transfertPaysEtranger,
-                                  Boolean recoursSousTraitant, Boolean contratConfidentialiteSousTraitant,
-                                  String rolesSousTraitants, String categoriesPersonnesAcces,
-                                  Boolean politiqueAccesBatiments, String mesuresSecurite,
-                                  Boolean mesuresSensibilisation, String moyensInformationDroits,
-                                  String moyensExerciceDroits, String coordonneesExerciceDroits,
-                                  String delaiCommunicationDroits, String nomPrenomResponsable,
-                                  String fonctionResponsable, DPO dpo) {
+                                LocalDate dateSoumission, String secteur, NatureDemande nature,
+                                String responsable, String contact, LocalDate dateMiseEnOeuvre,
+                                String categoriesDonnees, String origineDonnees, String dureeConservation,
+                                String lieuStockage, Boolean communicationAutresOrganismes,
+                                String destinataireNom, String destinataireAdresse,
+                                String texteJuridiqueCommunication, String finaliteCommunication,
+                                Boolean destinataireConformeCil, Boolean transfertPaysEtranger,
+                                Boolean recoursSousTraitant, Boolean contratConfidentialiteSousTraitant,
+                                String rolesSousTraitants, String categoriesPersonnesAcces,
+                                Boolean politiqueAccesBatiments, String mesuresSecurite,
+                                Boolean mesuresSensibilisation, String moyensInformationDroits,
+                                String moyensExerciceDroits, String coordonneesExerciceDroits,
+                                String delaiCommunicationDroits, String nomPrenomResponsable,
+                                String fonctionResponsable, DPO dpo) {
 
         d.setDateSoumission(dateSoumission != null ? dateSoumission : LocalDate.now());
         d.setSecteur(secteur);

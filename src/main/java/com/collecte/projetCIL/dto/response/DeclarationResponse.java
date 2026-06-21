@@ -1,12 +1,13 @@
 package com.collecte.projetCIL.dto.response;
 
+import java.time.LocalDate;
+
 import com.collecte.projetCIL.enums.NatureDemande;
 import com.collecte.projetCIL.enums.StatutDeclaration;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
 
 /**
  * Réponse commune renvoyée après la création ou la consultation

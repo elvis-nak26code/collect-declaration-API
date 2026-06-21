@@ -2,6 +2,7 @@ package com.collecte.projetCIL.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +18,7 @@ import com.collecte.projetCIL.models.SessionCollecte;
 import com.collecte.projetCIL.models.UtilisateurMetier;
 import com.collecte.projetCIL.repository.DPORepository;
 import com.collecte.projetCIL.repository.SessionCollecteRepository;
+import com.collecte.projetCIL.repository.TraitementRepository;
 import com.collecte.projetCIL.repository.UtilisateurMetierRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ public class SessionCollecteService {
     private final DPORepository               dpoRepository;
     private final UtilisateurMetierRepository utilisateurMetierRepository;
     private final NotificationService         notificationService;
+    private final TraitementRepository        traitementRepository;
 
     // ------------------------------------------------------------------ //
     //  Créer une session de collecte
@@ -67,9 +70,19 @@ public class SessionCollecteService {
     //  Lister toutes les sessions
     // ------------------------------------------------------------------ //
     public List<SessionCollecteResponse> listerSessions() {
-        return sessionCollecteRepository.findAll()
+        // 1 requête : nombre de traitements par session (au lieu d'1 par session)
+        Map<Long, Long> nbTraitementsParSession = traitementRepository.countTraitementsParSession()
                 .stream()
-                .map(this::toResponse)
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        // 1 requête : toutes les sessions + leur DPO (LEFT JOIN FETCH, au lieu
+        // d'1 requête DPO par session)
+        return sessionCollecteRepository.findAllWithDpo()
+                .stream()
+                .map(s -> toResponse(s, nbTraitementsParSession.getOrDefault(s.getIdSession(), 0L).intValue()))
                 .collect(Collectors.toList());
     }
 
@@ -103,6 +116,10 @@ public class SessionCollecteService {
     // ------------------------------------------------------------------ //
     private SessionCollecteResponse toResponse(SessionCollecte s) {
         int nbTraitements = (s.getTraitements() != null) ? s.getTraitements().size() : 0;
+        return toResponse(s, nbTraitements);
+    }
+
+    private SessionCollecteResponse toResponse(SessionCollecte s, int nbTraitements) {
         String nomDpo = (s.getDpo() != null)
                 ? s.getDpo().getPrenom() + " " + s.getDpo().getNom()
                 : null;
