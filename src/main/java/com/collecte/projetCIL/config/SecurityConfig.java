@@ -78,10 +78,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173" , "http://localhost:3000"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // config.setAllowedOrigins(List.of("http://localhost:5173" , "http://localhost:3000"));
+        config.setAllowedOrigins(List.of("*"));
+        config.setAllowCredentials(false); // obligatoire quand origins = *
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
+        // config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -101,6 +103,7 @@ public class SecurityConfig {
                 // Endpoints publics
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/api/auth/inscription").permitAll()
+                // .requestMatchers("/api/notifications/stream/**").permitAll()
                 // Endpoints admin uniquement
                 .requestMatchers("/api/admin/**").hasRole("ADMINISTRATEUR")
                 // Tout le reste : authentifié

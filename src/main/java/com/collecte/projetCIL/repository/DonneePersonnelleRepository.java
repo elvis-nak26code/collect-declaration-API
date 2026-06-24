@@ -1,12 +1,13 @@
 package com.collecte.projetCIL.repository;
 
-import com.collecte.projetCIL.models.DonneePersonnelle;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import com.collecte.projetCIL.models.DonneePersonnelle;
 
 @Repository
 public interface DonneePersonnelleRepository extends JpaRepository<DonneePersonnelle, Long> {
@@ -25,4 +26,11 @@ public interface DonneePersonnelleRepository extends JpaRepository<DonneePersonn
 
     @Query("SELECT d FROM DonneePersonnelle d WHERE d.personne.id = :personneId AND d.traitement.idTraitement = :traitementId")
     List<DonneePersonnelle> findByPersonneIdAndTraitementId(@Param("personneId") Long personneId, @Param("traitementId") Long traitementId);
+
+    /**
+     * Données de l'entrepôt : aucun traitement assigné.
+     * Triées par date de collecte décroissante.
+     */
+    @Query("SELECT d FROM DonneePersonnelle d WHERE d.traitement IS NULL ORDER BY d.dateCollecte DESC")
+    List<DonneePersonnelle> findEntrepot();
 }

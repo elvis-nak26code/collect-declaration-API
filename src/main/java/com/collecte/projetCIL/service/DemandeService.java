@@ -1,5 +1,13 @@
 package com.collecte.projetCIL.service;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.collecte.projetCIL.dto.request.DemandeRequest;
 import com.collecte.projetCIL.dto.response.DemandeResponse;
 import com.collecte.projetCIL.enums.ModuleConserne;
@@ -15,13 +23,8 @@ import com.collecte.projetCIL.repository.DemandeRepository;
 import com.collecte.projetCIL.repository.DonneePersonnelleRepository;
 import com.collecte.projetCIL.repository.UsagerRepository;
 import com.collecte.projetCIL.repository.UtilisateurMetierRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -37,8 +40,12 @@ public class DemandeService {
     @Transactional
     public DemandeResponse soumettreDemandeUsager(DemandeRequest req) {
 
-        Usager usager = usagerRepository.findById(req.getUsagerId())
-                .orElseThrow(() -> new RuntimeException("Usager introuvable : " + req.getUsagerId()));
+        // ✅ CORRECTION : résoudre l'usager depuis le JWT (email)
+        // au lieu de faire confiance à req.getUsagerId() qui contenait
+        // l'ID de la table `utilisateur` et non celui de la table `usager`.
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usager usager = usagerRepository.findUsagerByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usager introuvable pour l'email : " + email));
 
         DonneePersonnelle donnee = donneeRepository.findById(req.getDonneeId())
                 .orElseThrow(() -> new RuntimeException("Donnée introuvable : " + req.getDonneeId()));

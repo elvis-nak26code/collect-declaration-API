@@ -1,17 +1,19 @@
 package com.collecte.projetCIL.service;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+
 import com.collecte.projetCIL.dto.response.NotificationResponse;
 import com.collecte.projetCIL.enums.StatutNotification;
 import com.collecte.projetCIL.enums.TypeNotification;
 import com.collecte.projetCIL.models.Notification;
 import com.collecte.projetCIL.models.Utilisateur;
 import com.collecte.projetCIL.repository.NotificationRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
