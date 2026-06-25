@@ -30,13 +30,11 @@ import java.util.stream.Collectors;
  * traitement est NULL. Elles peuvent ensuite être "attachées" à un traitement
  * lors de la saisie via l'onglet "Depuis l'entrepôt".
  *
- * Format du fichier Excel (colonne A→F, ligne 1 ignorée car c'est l'en-tête) :
- *   A : nom          (obligatoire)
- *   B : prenom       (obligatoire)
- *   C : email        (optionnel)
- *   D : telephone    (optionnel)
- *   E : type_donnee  (nom exact ou approché, obligatoire)
- *   F : valeur       (obligatoire)
+ * Formats acceptés (ligne 1 ignorée = en-tête) :
+ *   Format A (standard) : NOM | PRENOM | EMAIL | TELEPHONE | DATE_NAISSANCE | NUMERO_CNIB | PROFESSION
+ *   Format B (explicite) : nom | prenom | email | telephone | type_donnee | valeur
+ *
+ * Les doublons (même personne + même type + même valeur) sont rejetés silencieusement.
  */
 @Service
 @RequiredArgsConstructor
@@ -56,12 +54,30 @@ public class EntrepotService {
         int totalLignes = 0;
         int lignesImportees = 0;
 
-        // Cache des types de données (chargé une seule fois pour la session d'import)
         List<TypeDonnee> tousLesTypes = typeDonneeRepository.findAll();
+        // Cache de l'entrepôt actuel pour accélérer les vérifications de doublons
+        List<DonneePersonnelle> entrepotActuel = donneePersonnelleRepository.findEntrepot();
 
         try (Workbook workbook = new XSSFWorkbook(fichier.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             int lastRow = sheet.getLastRowNum();
+
+            // Lire les en-têtes pour détecter le format
+            Row headerRow = sheet.getRow(0);
+            java.util.Map<String, Integer> colIndex = new java.util.HashMap<>();
+            if (headerRow != null) {
+                for (int c = 0; c <= headerRow.getLastCellNum(); c++) {
+                    Cell cell = headerRow.getCell(c);
+                    if (cell != null) {
+                        String header = getCellString(cell);
+                        if (header != null) colIndex.put(header.toLowerCase().trim(), c);
+                    }
+                }
+            }
+
+            // Format A si les colonnes standard sont présentes (NOM/PRENOM/EMAIL/TELEPHONE/...)
+            boolean isFormatA = colIndex.containsKey("nom") && colIndex.containsKey("prenom")
+                    && !colIndex.containsKey("type_donnee");
 
             for (int i = 1; i <= lastRow; i++) {
                 Row row = sheet.getRow(i);
@@ -69,48 +85,91 @@ public class EntrepotService {
 
                 totalLignes++;
                 try {
-                    // Colonnes
-                    String nom       = getCellString(row.getCell(0));
-                    String prenom    = getCellString(row.getCell(1));
-                    String email     = getCellString(row.getCell(2));
-                    String telephone = getCellString(row.getCell(3));
-                    String typeNom   = getCellString(row.getCell(4));
-                    String valeur    = getCellString(row.getCell(5));
+                    if (isFormatA) {
+                        // ── Format A : NOM | PRENOM | EMAIL | TELEPHONE | DATE_NAISSANCE | NUMERO_CNIB | PROFESSION ──
+                        int iNom        = colIndex.getOrDefault("nom", 0);
+                        int iPrenom     = colIndex.getOrDefault("prenom", 1);
+                        int iEmail      = colIndex.getOrDefault("email", 2);
+                        int iTel        = colIndex.getOrDefault("telephone", 3);
+                        int iNaissance  = colIndex.getOrDefault("date_naissance", 4);
+                        int iCnib       = colIndex.getOrDefault("numero_cnib", 5);
+                        int iProfession = colIndex.getOrDefault("profession", 6);
 
-                    // Validation des champs obligatoires
-                    if (nom == null || nom.isBlank())
-                        throw new Exception("Colonne A (nom) vide");
-                    if (prenom == null || prenom.isBlank())
-                        throw new Exception("Colonne B (prenom) vide");
-                    if (typeNom == null || typeNom.isBlank())
-                        throw new Exception("Colonne E (type_donnee) vide");
-                    if (valeur == null || valeur.isBlank())
-                        throw new Exception("Colonne F (valeur) vide");
+                        String nom          = getCellString(row.getCell(iNom));
+                        String prenom       = getCellString(row.getCell(iPrenom));
+                        String email        = getCellString(row.getCell(iEmail));
+                        String telephone    = getCellString(row.getCell(iTel));
+                        String dateNaissance= getCellString(row.getCell(iNaissance));
+                        String cnib         = getCellString(row.getCell(iCnib));
+                        String profession   = getCellString(row.getCell(iProfession));
 
-                    // Résolution du type de donnée par nom (insensible à la casse)
-                    TypeDonnee typeDonnee = tousLesTypes.stream()
-                            .filter(t -> t.getNom().equalsIgnoreCase(typeNom.trim()))
-                            .findFirst()
-                            .orElseThrow(() -> new Exception(
-                                    "Type de donnée inconnu : \"" + typeNom + "\". "
-                                    + "Types disponibles : " + tousLesTypes.stream()
-                                            .map(TypeDonnee::getNom)
-                                            .collect(Collectors.joining(", "))));
+                        if (nom == null || nom.isBlank()) throw new Exception("Colonne NOM vide");
+                        if (prenom == null || prenom.isBlank()) throw new Exception("Colonne PRENOM vide");
 
-                    // Dédoublonnage personne par email puis téléphone
-                    Personne personne = trouverOuCreerPersonne(nom.trim(), prenom.trim(),
-                            email, telephone);
+                        Personne personne = trouverOuCreerPersonne(nom.trim(), prenom.trim(), email, telephone);
 
-                    // Création de la donnée dans l'entrepôt (traitement = null)
-                    DonneePersonnelle donnee = new DonneePersonnelle();
-                    donnee.setValeur(valeur.trim());
-                    donnee.setDateCollecte(LocalDateTime.now());
-                    donnee.setPersonne(personne);
-                    donnee.setTypeDonnee(typeDonnee);
-                    donnee.setTraitement(null); // entrepôt : pas encore rattachée
+                        int count = 0;
+                        if (telephone != null && !telephone.isBlank())
+                            count += sauvegarderEntrepot(personne, tousLesTypes, "Téléphone", telephone.trim(), entrepotActuel);
+                        if (email != null && !email.isBlank())
+                            count += sauvegarderEntrepot(personne, tousLesTypes, "Email", email.trim(), entrepotActuel);
+                        if (dateNaissance != null && !dateNaissance.isBlank())
+                            count += sauvegarderEntrepot(personne, tousLesTypes, "Date de naissance", dateNaissance.trim(), entrepotActuel);
+                        if (cnib != null && !cnib.isBlank())
+                            count += sauvegarderEntrepot(personne, tousLesTypes, "Numéro CNIB", cnib.trim(), entrepotActuel);
+                        if (profession != null && !profession.isBlank())
+                            count += sauvegarderEntrepot(personne, tousLesTypes, "Profession", profession.trim(), entrepotActuel);
 
-                    donneePersonnelleRepository.save(donnee);
-                    lignesImportees++;
+                        if (count == 0) throw new Exception("Aucune donnée valide (doublons exclus ou champs vides)");
+                        lignesImportees += count;
+
+                    } else {
+                        // ── Format B : nom | prenom | email | telephone | type_donnee | valeur ──
+                        int iNom    = colIndex.getOrDefault("nom", 0);
+                        int iPrenom = colIndex.getOrDefault("prenom", 1);
+                        int iEmail  = colIndex.getOrDefault("email", 2);
+                        int iTel    = colIndex.getOrDefault("telephone", 3);
+                        int iType   = colIndex.getOrDefault("type_donnee", 4);
+                        int iValeur = colIndex.getOrDefault("valeur", 5);
+
+                        String nom       = getCellString(row.getCell(iNom));
+                        String prenom    = getCellString(row.getCell(iPrenom));
+                        String email     = getCellString(row.getCell(iEmail));
+                        String telephone = getCellString(row.getCell(iTel));
+                        String typeNom   = getCellString(row.getCell(iType));
+                        String valeur    = getCellString(row.getCell(iValeur));
+
+                        if (nom == null || nom.isBlank())    throw new Exception("Colonne A (nom) vide");
+                        if (prenom == null || prenom.isBlank()) throw new Exception("Colonne B (prenom) vide");
+                        if (typeNom == null || typeNom.isBlank()) throw new Exception("Colonne E (type_donnee) vide");
+                        if (valeur == null || valeur.isBlank())   throw new Exception("Colonne F (valeur) vide");
+
+                        TypeDonnee typeDonnee = tousLesTypes.stream()
+                                .filter(t -> t.getNom().equalsIgnoreCase(typeNom.trim()))
+                                .findFirst()
+                                .orElseThrow(() -> new Exception(
+                                        "Type de donnée inconnu : \"" + typeNom + "\". "
+                                        + "Types disponibles : " + tousLesTypes.stream()
+                                                .map(TypeDonnee::getNom)
+                                                .collect(Collectors.joining(", "))));
+
+                        Personne personne = trouverOuCreerPersonne(nom.trim(), prenom.trim(), email, telephone);
+
+                        // Anti-doublon dans l'entrepôt
+                        if (estDoublonEntrepot(personne, typeDonnee, valeur.trim(), entrepotActuel)) {
+                            erreurs.add("Ligne " + (i + 1) + " : doublon ignoré (" + typeNom + " = " + valeur + ")");
+                        } else {
+                            DonneePersonnelle donnee = new DonneePersonnelle();
+                            donnee.setValeur(valeur.trim());
+                            donnee.setDateCollecte(LocalDateTime.now());
+                            donnee.setPersonne(personne);
+                            donnee.setTypeDonnee(typeDonnee);
+                            donnee.setTraitement(null);
+                            DonneePersonnelle saved = donneePersonnelleRepository.save(donnee);
+                            entrepotActuel.add(saved); // mise à jour du cache local
+                            lignesImportees++;
+                        }
+                    }
 
                 } catch (Exception e) {
                     erreurs.add("Ligne " + (i + 1) + " : " + e.getMessage());
@@ -124,10 +183,6 @@ public class EntrepotService {
 
     // ─── Listing ──────────────────────────────────────────────────────────────
 
-    /**
-     * Renvoie les données de l'entrepôt (traitement = null).
-     * Si q est fourni, filtre par nom/prenom/valeur/type de donnée.
-     */
     public List<DonneePersonnelleResponse> lister(String q) {
         List<DonneePersonnelle> entrepot = donneePersonnelleRepository.findEntrepot();
         if (q != null && !q.isBlank()) {
@@ -172,7 +227,7 @@ public class EntrepotService {
         for (Long id : donneeIds) {
             DonneePersonnelle donnee = donneePersonnelleRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Donnée introuvable : " + id));
-            if (donnee.getTraitement() == null) { // n'attache que les données libre
+            if (donnee.getTraitement() == null) {
                 donnee.setTraitement(traitement);
                 resultats.add(toResponse(donneePersonnelleRepository.save(donnee)));
                 count++;
@@ -184,19 +239,54 @@ public class EntrepotService {
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
+    /**
+     * Sauvegarde une donnée dans l'entrepôt après vérification anti-doublon.
+     * Met à jour le cache local entrepotActuel.
+     */
+    private int sauvegarderEntrepot(Personne personne, List<TypeDonnee> tousLesTypes,
+            String typeNom, String valeur, List<DonneePersonnelle> entrepotActuel) {
+
+        TypeDonnee type = tousLesTypes.stream()
+                .filter(t -> t.getNom().equalsIgnoreCase(typeNom))
+                .findFirst().orElse(null);
+        if (type == null) return 0;
+
+        if (estDoublonEntrepot(personne, type, valeur, entrepotActuel)) return 0;
+
+        DonneePersonnelle donnee = new DonneePersonnelle();
+        donnee.setValeur(valeur);
+        donnee.setDateCollecte(LocalDateTime.now());
+        donnee.setPersonne(personne);
+        donnee.setTypeDonnee(type);
+        donnee.setTraitement(null);
+        DonneePersonnelle saved = donneePersonnelleRepository.save(donnee);
+        entrepotActuel.add(saved);
+        return 1;
+    }
+
+    private boolean estDoublonEntrepot(Personne personne, TypeDonnee typeDonnee,
+            String valeur, List<DonneePersonnelle> entrepotActuel) {
+        if (personne == null || typeDonnee == null) return false;
+        return entrepotActuel.stream().anyMatch(d ->
+            d.getTypeDonnee() != null
+            && d.getTypeDonnee().getIdTypeDonnee().equals(typeDonnee.getIdTypeDonnee())
+            && d.getValeur() != null
+            && d.getValeur().equalsIgnoreCase(valeur)
+            && d.getPersonne() != null
+            && d.getPersonne().getId().equals(personne.getId())
+        );
+    }
+
     private Personne trouverOuCreerPersonne(String nom, String prenom,
                                              String email, String telephone) {
-        // Dédoublonnage par email
         if (email != null && !email.isBlank()) {
             Optional<Personne> existant = personneRepository.findByEmail(email.trim());
             if (existant.isPresent()) return existant.get();
         }
-        // Dédoublonnage par téléphone
         if (telephone != null && !telephone.isBlank()) {
             Optional<Personne> existant = personneRepository.findByTelephone(telephone.trim());
             if (existant.isPresent()) return existant.get();
         }
-        // Création
         Personne p = new Personne();
         p.setNom(nom);
         p.setPrenom(prenom);
@@ -208,7 +298,7 @@ public class EntrepotService {
     }
 
     private boolean estLigneVide(Row row) {
-        for (int c = 0; c <= 5; c++) {
+        for (int c = 0; c <= 6; c++) {
             Cell cell = row.getCell(c);
             if (cell != null && cell.getCellType() != CellType.BLANK) {
                 String val = getCellString(cell);
@@ -224,7 +314,6 @@ public class EntrepotService {
             case STRING  -> cell.getStringCellValue().trim();
             case NUMERIC -> {
                 double v = cell.getNumericCellValue();
-                // Évite "70000000.0" pour les numéros de téléphone
                 yield v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v);
             }
             case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
