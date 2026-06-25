@@ -1,23 +1,24 @@
 package com.collecte.projetCIL.controller;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
 
+import com.collecte.projetCIL.dto.request.AdminMotDePasseRequest;
+import com.collecte.projetCIL.dto.request.AdminProfilRequest;
 import com.collecte.projetCIL.dto.response.DemandeAccesResponse;
 import com.collecte.projetCIL.dto.response.JournalAuditResponse;
 import com.collecte.projetCIL.dto.response.MessageResponse;
 import com.collecte.projetCIL.dto.response.UtilisateurResponse;
+import com.collecte.projetCIL.enums.StatutDemandeAcces;
 import com.collecte.projetCIL.enums.StatutUtilisateur;
+import com.collecte.projetCIL.service.AdminProfilService;
 import com.collecte.projetCIL.service.DemandeAccesService;
 import com.collecte.projetCIL.service.JournalAuditService;
 import com.collecte.projetCIL.service.UtilisateurService;
@@ -41,6 +42,13 @@ import lombok.RequiredArgsConstructor;
  * ── Journal d'audit ───────────────────────────────────────────────────
  * GET    /api/admin/journal-audit                 → tous les journaux (anti-chron.)
  * GET    /api/admin/journal-audit/{utilisateurId} → journaux d'un utilisateur
+ *
+ * ── Statistiques dashboard ────────────────────────────────────────────
+ * GET    /api/admin/stats                         → statistiques pour le camembert
+ *
+ * ── Profil admin ──────────────────────────────────────────────────────
+ * PUT    /api/admin/profil                        → modifier nom/prénom
+ * PUT    /api/admin/mot-de-passe                  → changer le mot de passe
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -51,6 +59,7 @@ public class AdminController {
     private final DemandeAccesService  demandeAccesService;
     private final UtilisateurService   utilisateurService;
     private final JournalAuditService  journalAuditService;
+    private final AdminProfilService   adminProfilService;
 
     // ================================================================== //
     //  DEMANDES D'ACCÈS
@@ -114,5 +123,85 @@ public class AdminController {
     public ResponseEntity<List<JournalAuditResponse>> journauxParUtilisateur(
             @PathVariable Long utilisateurId) {
         return ResponseEntity.ok(journalAuditService.listerParUtilisateur(utilisateurId));
+    }
+
+    // ================================================================== //
+    //  STATISTIQUES DASHBOARD (camembert)
+    // ================================================================== //
+
+    /**
+     * Retourne des statistiques agrégées pour le camembert du dashboard :
+     * - Répartition des utilisateurs par rôle
+     * - Répartition des demandes par statut
+     * - Répartition des actions du journal par module
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> statsTableauDeBord() {
+        Map<String, Object> stats = new HashMap<>();
+
+        // 1. Répartition utilisateurs par type (hors Usagers)
+        List<UtilisateurResponse> tousUtilisateurs = utilisateurService.listerTous();
+        Map<String, Long> parRole = tousUtilisateurs.stream()
+                .filter(u -> !"Usager".equals(u.getTypeUtilisateur()))
+                .collect(Collectors.groupingBy(
+                        u -> u.getTypeUtilisateur() != null ? u.getTypeUtilisateur() : "Inconnu",
+                        Collectors.counting()
+                ));
+        stats.put("utilisateursParRole", parRole);
+
+        // 2. Nombre d'usagers
+        long nbUsagers = tousUtilisateurs.stream()
+                .filter(u -> "Usager".equals(u.getTypeUtilisateur()))
+                .count();
+        stats.put("totalUsagers", nbUsagers);
+
+        // 3. Répartition demandes par statut
+        List<DemandeAccesResponse> toutesLesDemandes = demandeAccesService.listerToutes();
+        Map<String, Long> demandesParStatut = toutesLesDemandes.stream()
+                .filter(d -> d.getTypeUtilisateur() != null && !"Usager".equals(d.getTypeUtilisateur()))
+                .collect(Collectors.groupingBy(
+                        d -> d.getStatutDemandeAcces() != null ? d.getStatutDemandeAcces().name() : "INCONNU",
+                        Collectors.counting()
+                ));
+        stats.put("demandesParStatut", demandesParStatut);
+
+        // 4. Top modules dans le journal d'audit
+        List<JournalAuditResponse> journaux = journalAuditService.listerTousTriesParDate();
+        Map<String, Long> actionsParModule = journaux.stream()
+                .filter(j -> j.getModuleConserne() != null)
+                .collect(Collectors.groupingBy(
+                        j -> j.getModuleConserne().name(),
+                        Collectors.counting()
+                ));
+        stats.put("actionsParModule", actionsParModule);
+
+        // 5. Actions par résultat (SUCCES / ECHEC)
+        Map<String, Long> actionsParResultat = journaux.stream()
+                .filter(j -> j.getResultatAction() != null)
+                .collect(Collectors.groupingBy(
+                        j -> j.getResultatAction().name(),
+                        Collectors.counting()
+                ));
+        stats.put("actionsParResultat", actionsParResultat);
+
+        return ResponseEntity.ok(stats);
+    }
+
+    // ================================================================== //
+    //  PROFIL ADMIN
+    // ================================================================== //
+
+    @PutMapping("/profil")
+    public ResponseEntity<MessageResponse> modifierProfil(
+            Authentication authentication,
+            @RequestBody AdminProfilRequest req) {
+        return ResponseEntity.ok(adminProfilService.modifierProfil(authentication.getName(), req));
+    }
+
+    @PutMapping("/mot-de-passe")
+    public ResponseEntity<MessageResponse> changerMotDePasse(
+            Authentication authentication,
+            @RequestBody AdminMotDePasseRequest req) {
+        return ResponseEntity.ok(adminProfilService.changerMotDePasse(authentication.getName(), req));
     }
 }

@@ -110,7 +110,7 @@ public class DemandeService {
 
         if (demande.getUsager() != null) {
             String msg = "Votre demande de " + demande.getTypeDemande().toLowerCase()
-                    + " (#" + demandeId + ") a été acceptée et traitée.";
+                 + " (#" + demandeId + ") a été acceptée et traitée.";
             notificationService.envoyer(demande.getUsager(), TypeNotification.CONFIRMATION, msg);
         }
 

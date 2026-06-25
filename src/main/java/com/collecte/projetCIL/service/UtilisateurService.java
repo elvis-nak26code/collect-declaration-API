@@ -21,14 +21,13 @@ public class UtilisateurService {
     private final UtilisateurRepository utilisateurRepository;
 
     /**
-     * Retourne uniquement les utilisateurs dont la demande d'accès est APPROUVEE.
-     * Les utilisateurs sans demande ou avec demande EN_ATTENTE / REJETEE sont exclus.
+     * Retourne TOUS les utilisateurs sans exception.
+     * - Les usagers sont inclus même sans demande d'accès approuvée (ils se connectent directement).
+     * - Les autres types d'utilisateurs sont inclus quel que soit le statut de leur demande.
+     * Le frontend fait le tri selon les besoins de chaque section.
      */
     public List<UtilisateurResponse> listerTous() {
         return utilisateurRepository.findAll().stream()
-                .filter(u -> u.getDemandeAcces() != null
-                        && StatutDemandeAcces.APPROUVEE.equals(
-                                u.getDemandeAcces().getStatutDemandeAcces()))
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
