@@ -1,18 +1,33 @@
 package com.collecte.projetCIL.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.collecte.projetCIL.dto.response.DemandeAccesResponse;
 import com.collecte.projetCIL.dto.response.MessageResponse;
 import com.collecte.projetCIL.enums.StatutDemandeAcces;
 import com.collecte.projetCIL.enums.StatutUtilisateur;
-import com.collecte.projetCIL.models.*;
-import com.collecte.projetCIL.repository.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.collecte.projetCIL.models.Administrateur;
+import com.collecte.projetCIL.models.CIL;
+import com.collecte.projetCIL.models.DG;
+import com.collecte.projetCIL.models.DPO;
+import com.collecte.projetCIL.models.DemandeAcces;
+import com.collecte.projetCIL.models.Usager;
+import com.collecte.projetCIL.models.Utilisateur;
+import com.collecte.projetCIL.models.UtilisateurMetier;
+import com.collecte.projetCIL.repository.CILRepository;
+import com.collecte.projetCIL.repository.DGRepository;
+import com.collecte.projetCIL.repository.DPORepository;
+import com.collecte.projetCIL.repository.DemandeAccesRepository;
+import com.collecte.projetCIL.repository.UsagerRepository;
+import com.collecte.projetCIL.repository.UtilisateurMetierRepository;
+import com.collecte.projetCIL.repository.UtilisateurRepository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +36,6 @@ public class DemandeAccesService {
     private final DemandeAccesRepository demandeAccesRepository;
     private final UtilisateurRepository utilisateurRepository;
 
-    // Repositories spécifiques pour préserver les tables enfants JPA
     private final DPORepository dpoRepository;
     private final CILRepository cilRepository;
     private final DGRepository dgRepository;
@@ -29,12 +43,14 @@ public class DemandeAccesService {
     private final UsagerRepository usagerRepository;
 
     public List<DemandeAccesResponse> listerEnAttente() {
-        return demandeAccesRepository.findByStatutDemandeAcces(StatutDemandeAcces.EN_ATTENTE)
+        // ← utilise findByStatutWithFetch au lieu de findByStatutDemandeAcces
+        return demandeAccesRepository.findByStatutWithFetch(StatutDemandeAcces.EN_ATTENTE)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     public List<DemandeAccesResponse> listerToutes() {
-        return demandeAccesRepository.findAll()
+        // ← utilise findAllWithFetch au lieu de findAll
+        return demandeAccesRepository.findAllWithFetch()
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -79,10 +95,6 @@ public class DemandeAccesService {
         return new MessageResponse("Demande de " + utilisateur.getEmail() + " rejetée.");
     }
 
-    /**
-     * Sauvegarde via le repository du sous-type réel.
-     * Évite que utilisateurRepository.save() écrase/ignore la table enfant (dpo, cil, etc.)
-     */
     private void sauvegarderUtilisateur(Utilisateur utilisateur) {
         if (utilisateur instanceof DPO d)                { dpoRepository.save(d); return; }
         if (utilisateur instanceof CIL c)                { cilRepository.save(c); return; }
