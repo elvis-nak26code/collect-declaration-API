@@ -21,6 +21,13 @@ public interface DeclarationRepository extends JpaRepository<Declaration, Long> 
     @Query("SELECT d FROM Declaration d WHERE d.statut = :statut")
     List<Declaration> findByStatut(@Param("statut") StatutDeclaration statut);
 
+    /**
+     * Déclarations EN_ATTENTE avec DPO renseigné = réellement soumises par un DPO.
+     * Exclut les brouillons auto-générés par les traitements (dpo null).
+     */
+    @Query("SELECT d FROM Declaration d WHERE d.statut = 'EN_ATTENTE' AND d.dpo IS NOT NULL ORDER BY d.dateSoumission ASC")
+    List<Declaration> findEnAttenteAvecDpo();
+
     /** Déclarations en attente, triées par date de soumission. */
     @Query("SELECT d FROM Declaration d WHERE d.statut = 'EN_ATTENTE' ORDER BY d.dateSoumission ASC")
     List<Declaration> findEnAttenteOrderByDate();

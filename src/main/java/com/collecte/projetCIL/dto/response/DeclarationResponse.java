@@ -35,4 +35,7 @@ public class DeclarationResponse {
     // Traitement associé
     private Long traitementId;
     private String traitementDescription;
+
+    // "AUTOMATIQUE" (brouillon auto-créé) ou "MANUELLE" (créée par le DPO)
+    private String origineDeclaration;
 }

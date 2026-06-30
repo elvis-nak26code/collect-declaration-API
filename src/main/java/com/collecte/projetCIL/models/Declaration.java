@@ -166,6 +166,16 @@ public class Declaration {
     @Enumerated(EnumType.STRING)
     private StatutDeclaration statut;
 
+    /**
+     * AUTOMATIQUE : déclaration pré-créée en BROUILLON en même temps que le
+     * traitement (par l'Utilisateur Métier) — ne doit jamais apparaître dans
+     * la liste "Mes déclarations" du DPO.
+     * MANUELLE : déclaration créée explicitement par le DPO via "Déclarer".
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origine_declaration")
+    private com.collecte.projetCIL.enums.OrigineDeclaration origineDeclaration;
+
     // ── Relations ─────────────────────────────────────────────────────────
 
     // Traitement source qui a déclenché la création de cette déclaration

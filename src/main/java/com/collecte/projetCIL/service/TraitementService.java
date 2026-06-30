@@ -99,7 +99,10 @@ public class TraitementService {
                                         TraitementRequest request,
                                         Traitement traitement) {
         decl.setTraitement(traitement);
-        decl.setStatut(StatutDeclaration.EN_ATTENTE);
+        // BROUILLON : déclaration pré-remplie par le traitement, pas encore soumise par le DPO.
+        // Elle passera EN_ATTENTE seulement quand le DPO la complète et la soumet.
+        decl.setStatut(StatutDeclaration.BROUILLON);
+        decl.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.AUTOMATIQUE);
         decl.setDateSoumission(LocalDate.now());
 
         // ── Champs de base ────────────────────────────────────────────────

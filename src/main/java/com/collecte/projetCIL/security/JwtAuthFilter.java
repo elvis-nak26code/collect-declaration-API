@@ -1,11 +1,10 @@
 package com.collecte.projetCIL.security;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -21,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
+    private final CustomUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -29,28 +29,37 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
+
             if (jwtUtils.validateToken(token)) {
                 String email = jwtUtils.getEmailFromToken(token);
-                String role  = jwtUtils.getRoleFromToken(token);
 
-                System.out.println("=== JWT DEBUG ===");
-                System.out.println("Email : " + email);
-                System.out.println("Role  : " + role);
-                System.out.println("=================");
+                // On ne touche au SecurityContext que si personne n'est déjà authentifié
+                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                List<SimpleGrantedAuthority> authorities =
-                        List.of(new SimpleGrantedAuthority(role));
+                    // ⚠️ CORRECTIF : on charge le VRAI UserDetails (avec ses rôles
+                    // récupérés en base) au lieu de mettre l'email brut comme principal.
+                    // C'est ce qui permettait à @AuthenticationPrincipal UserDetails
+                    // de recevoir "null" et de faire planter tous les contrôleurs
+                    // (DeclarationController, etc.) avec une NullPointerException.
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                email, null, authorities);
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities());
+
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
         }
+
         filterChain.doFilter(request, response);
     }
 }

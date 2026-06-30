@@ -98,6 +98,9 @@ public class DeclarationService {
         d.setMotifsInterconnexion(req.getMotifsInterconnexion());
         d.setIdentiteFichiersInterconnexion(req.getIdentiteFichiersInterconnexion());
 
+        d.setTraitement(trt);
+        d.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE);
+
         DeclarationNormale saved = normaleRepo.save(d);
         postCreation(dpo, trt, saved, "NORMALE");
         return toResponse(saved, "NORMALE", trt);
@@ -139,6 +142,9 @@ public class DeclarationService {
         d.setDescriptionCookies(req.getDescriptionCookies());
         d.setDureeConservationCookies(req.getDureeConservationCookies());
         d.setTelechargementTraitement(req.getTelechargementTraitement());
+
+        d.setTraitement(trt);
+        d.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE);
 
         DeclarationCollecteSiteInternet saved = collecteSiteRepo.save(d);
         postCreation(dpo, trt, saved, "COLLECTE_SITE");
@@ -189,6 +195,9 @@ public class DeclarationService {
         d.setMesuresSuppression(req.getMesuresSuppression());
         d.setAttribute(req.getAttribute());
         d.setLocalisationPictogrammes(req.getLocalisationPictogrammes());
+
+        d.setTraitement(trt);
+        d.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE);
 
         DeclarationSystemeVideoSurveillance saved = videoRepo.save(d);
         postCreation(dpo, trt, saved, "VIDEO_SURVEILLANCE");
@@ -258,22 +267,77 @@ public class DeclarationService {
         d.setDureeConservationSante(req.getDureeConservationSante());
         d.setOrigineDonnees(req.getOrigineDonnees());
 
+        d.setTraitement(trt);
+        d.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE);
+
         DeclarationAutorisation saved = autorisationRepo.save(d);
         postCreation(dpo, trt, saved, "AUTORISATION");
         return toResponse(saved, "AUTORISATION", trt);
     }
 
     // ================================================================== //
+    //  SOUMISSION DPO : passe une déclaration BROUILLON → EN_ATTENTE     //
+    //  Permet au DPO de finaliser et soumettre une déclaration pré-remplie
+    //  depuis le traitement de l'Utilisateur Métier.
+    // ================================================================== //
+    @Transactional
+    public DeclarationResponse soumettre(Long declarationId, String emailDpo) {
+        Declaration d = declarationRepo.findById(declarationId)
+                .orElseThrow(() -> new RuntimeException("Déclaration introuvable : " + declarationId));
+
+        DPO dpo = getDpo(emailDpo);
+
+        if (d.getStatut() != StatutDeclaration.BROUILLON
+                && d.getStatut() != StatutDeclaration.REJETEE_DG
+                && d.getStatut() != StatutDeclaration.REJETEE_CIL) {
+            throw new RuntimeException("Cette déclaration ne peut pas être soumise (statut : " + d.getStatut() + ").");
+        }
+
+        d.setStatut(StatutDeclaration.EN_ATTENTE);
+        d.setDateSoumission(LocalDate.now());
+        if (d.getDpo() == null) d.setDpo(dpo);
+        Declaration saved = declarationRepo.save(d);
+
+        journalAuditService.enregistrer(dpo, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+
+        // Notifier le DG
+        dgRepo.findAll().stream().findFirst().ifPresent(dg ->
+                notificationService.envoyer(dg, TypeNotification.ALERTE,
+                        "Nouvelle déclaration #" + declarationId + " soumise par "
+                        + dpo.getPrenom() + " " + dpo.getNom()
+                        + " — en attente de votre validation."));
+
+        return toResponse(saved, detecterType(saved), null);
+    }
+
+    // ================================================================== //
     //  CONSULTATION
     // ================================================================== //
     public List<DeclarationResponse> listerParDpo(Long dpoId) {
+        // Seules les déclarations créées manuellement par le DPO (bouton "Déclarer")
+        // doivent apparaître ici. Les brouillons auto-créés en même temps que le
+        // traitement (origine AUTOMATIQUE, statut BROUILLON) restent invisibles
+        // tant qu'ils n'ont pas été repris/soumis explicitement par le DPO.
         return declarationRepo.findByDpoId(dpoId).stream()
+                .filter(d -> d.getOrigineDeclaration() == com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE)
                 .map(d -> toResponse(d, detecterType(d), null))
                 .collect(Collectors.toList());
     }
 
     public List<DeclarationResponse> listerEnAttente() {
-        return declarationRepo.findByStatut(StatutDeclaration.EN_ATTENTE).stream()
+        // Seules les déclarations EN_ATTENTE avec un DPO associé sont de vraies soumissions.
+        // Les déclarations créées automatiquement par TraitementService ont statut BROUILLON
+        // et sont exclues de la vue DG jusqu'à ce que le DPO les complète.
+        return declarationRepo.findEnAttenteAvecDpo().stream()
+                .map(d -> toResponse(d, detecterType(d), null))
+                .collect(Collectors.toList());
+    }
+
+    /** Toutes les déclarations hors BROUILLON — pour l'historique DG. */
+    public List<DeclarationResponse> listerHistoriqueDg() {
+        return declarationRepo.findAll().stream()
+                .filter(d -> d.getDpo() != null
+                        && d.getStatut() != StatutDeclaration.BROUILLON)
                 .map(d -> toResponse(d, detecterType(d), null))
                 .collect(Collectors.toList());
     }
@@ -807,8 +871,13 @@ public class DeclarationService {
             dpoId  = d.getDpo().getId();
             dpoNom = d.getDpo().getPrenom() + " " + d.getDpo().getNom();
         }
-        Long   trtId   = trt != null ? trt.getIdTraitement() : null;
-        String trtDesc = trt != null ? trt.getDescription()  : null;
+        // Fallback : si aucun traitement n'est passé explicitement (cas des listes),
+        // on utilise la relation persistée sur la déclaration elle-même.
+        Traitement effectiveTrt = trt != null ? trt : d.getTraitement();
+        Long   trtId   = effectiveTrt != null ? effectiveTrt.getIdTraitement() : null;
+        String trtDesc = effectiveTrt != null ? effectiveTrt.getDescription()  : null;
+
+        String origine = d.getOrigineDeclaration() != null ? d.getOrigineDeclaration().name() : "MANUELLE";
 
         return new DeclarationResponse(
                 d.getIdDeclaration(),
@@ -823,7 +892,8 @@ public class DeclarationService {
                 dpoId,
                 dpoNom,
                 trtId,
-                trtDesc
+                trtDesc,
+                origine
         );
     }
 }

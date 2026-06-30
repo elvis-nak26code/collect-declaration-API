@@ -1,17 +1,30 @@
 package com.collecte.projetCIL.controller;
 
-import com.collecte.projetCIL.dto.request.*;
-import com.collecte.projetCIL.dto.response.DeclarationResponse;
-import com.collecte.projetCIL.service.DeclarationService;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Map;
+import com.collecte.projetCIL.dto.request.DeclarationAutorisationRequest;
+import com.collecte.projetCIL.dto.request.DeclarationCollecteSiteInternetRequest;
+import com.collecte.projetCIL.dto.request.DeclarationNormaleRequest;
+import com.collecte.projetCIL.dto.request.DeclarationVideoSurveillanceRequest;
+import com.collecte.projetCIL.dto.response.DeclarationResponse;
+import com.collecte.projetCIL.service.DeclarationService;
+
+import lombok.RequiredArgsConstructor;
 
 /**
  * ── Création (DPO) ────────────────────────────────────────────────────────
@@ -124,12 +137,34 @@ public class DeclarationController {
         return ResponseEntity.noContent().build();
     }
 
+    // ── Soumission DPO (BROUILLON → EN_ATTENTE) ───────────────────────── //
+
+    /**
+     * Le DPO soumet une déclaration pré-remplie (depuis un traitement) ou
+     * une déclaration rejetée corrigée. Passe le statut à EN_ATTENTE pour
+     * que le DG puisse la voir et la valider.
+     */
+    @PutMapping("/{id}/soumettre")
+    @PreAuthorize("hasAuthority('ROLE_DPO')")
+    public ResponseEntity<DeclarationResponse> soumettre(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(declarationService.soumettre(id, userDetails.getUsername()));
+    }
+
     // ── Consultation ──────────────────────────────────────────────────── //
 
     @GetMapping("/mes-declarations")
     @PreAuthorize("hasAuthority('ROLE_DPO')")
     public ResponseEntity<List<DeclarationResponse>> mesDeclarations(@RequestParam Long dpoId) {
         return ResponseEntity.ok(declarationService.listerParDpo(dpoId));
+    }
+
+    /** DG : historique complet de toutes les déclarations traitées (hors brouillons). */
+    @GetMapping("/historique-dg")
+    @PreAuthorize("hasAnyAuthority('ROLE_DG','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<List<DeclarationResponse>> historiqueDeclarationsDg() {
+        return ResponseEntity.ok(declarationService.listerHistoriqueDg());
     }
 
     /** DG : déclarations EN_ATTENTE soumises par le DPO. */
