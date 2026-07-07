@@ -68,7 +68,14 @@ public class DeclarationService {
         DPO dpo         = getDpo(emailDpo);
         Traitement trt  = getTraitement(req.getTraitementId());
 
-        DeclarationNormale d = new DeclarationNormale();
+        // ── Un traitement ne peut être déclaré qu'UNE seule fois ────────
+        Declaration existante = getDeclarationReutilisable(trt.getIdTraitement());
+        if (existante != null && !(existante instanceof DeclarationNormale)) {
+            declarationRepo.delete(existante);
+            existante = null;
+        }
+
+        DeclarationNormale d = existante != null ? (DeclarationNormale) existante : new DeclarationNormale();
         remplirChampBase(d, req.getDateSoumission(), req.getSecteur(), req.getNatureDemande(),
                 req.getResponsableDeclaration(), req.getContactConfidentialite(),
                 req.getDateMiseEnOeuvre(), req.getCategoriesDonnees(), req.getOrigineDonnees(),
@@ -97,6 +104,16 @@ public class DeclarationService {
         d.setDescriptionConnexionFichiers(req.getDescriptionConnexionFichiers());
         d.setMotifsInterconnexion(req.getMotifsInterconnexion());
         d.setIdentiteFichiersInterconnexion(req.getIdentiteFichiersInterconnexion());
+        d.setIntituleTraitement(req.getIntituleTraitement());
+        d.setSupportTraitement(req.getSupportTraitement());
+        d.setCategoriesDonneesCollectees(req.getCategoriesDonneesCollectees());
+        d.setDonneesSensibles(req.getDonneesSensibles());
+        d.setNatureDonneesSensibles(req.getNatureDonneesSensibles());
+        d.setServiceResponsable(req.getServiceResponsable());
+        d.setDateSignature(req.getDateSignature());
+        d.setLieuSignature(req.getLieuSignature());
+        d.setPaysDestination(req.getPaysDestination());
+        d.setGarantiesProtectionEtranger(req.getGarantiesProtectionEtranger());
 
         d.setTraitement(trt);
         d.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE);
@@ -115,7 +132,13 @@ public class DeclarationService {
         DPO dpo        = getDpo(emailDpo);
         Traitement trt = getTraitement(req.getTraitementId());
 
-        DeclarationCollecteSiteInternet d = new DeclarationCollecteSiteInternet();
+        Declaration existante = getDeclarationReutilisable(trt.getIdTraitement());
+        if (existante != null && !(existante instanceof DeclarationCollecteSiteInternet)) {
+            declarationRepo.delete(existante);
+            existante = null;
+        }
+
+        DeclarationCollecteSiteInternet d = existante != null ? (DeclarationCollecteSiteInternet) existante : new DeclarationCollecteSiteInternet();
         remplirChampBase(d, req.getDateSoumission(), req.getSecteur(), req.getNatureDemande(),
                 req.getResponsableDeclaration(), req.getContactConfidentialite(),
                 req.getDateMiseEnOeuvre(), req.getCategoriesDonnees(), req.getOrigineDonnees(),
@@ -142,6 +165,16 @@ public class DeclarationService {
         d.setDescriptionCookies(req.getDescriptionCookies());
         d.setDureeConservationCookies(req.getDureeConservationCookies());
         d.setTelechargementTraitement(req.getTelechargementTraitement());
+        d.setUrlSite(req.getUrlSite());
+        d.setTypeCookies(req.getTypeCookies());
+        d.setConsentementCookies(req.getConsentementCookies());
+        d.setFormulairesEnLigne(req.getFormulairesEnLigne());
+        d.setDonneesFormulaires(req.getDonneesFormulaires());
+        d.setServiceResponsable(req.getServiceResponsable());
+        d.setDateSignature(req.getDateSignature());
+        d.setLieuSignature(req.getLieuSignature());
+        d.setPaysDestination(req.getPaysDestination());
+        d.setGarantiesProtectionEtranger(req.getGarantiesProtectionEtranger());
 
         d.setTraitement(trt);
         d.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE);
@@ -160,7 +193,13 @@ public class DeclarationService {
         DPO dpo        = getDpo(emailDpo);
         Traitement trt = getTraitement(req.getTraitementId());
 
-        DeclarationSystemeVideoSurveillance d = new DeclarationSystemeVideoSurveillance();
+        Declaration existante = getDeclarationReutilisable(trt.getIdTraitement());
+        if (existante != null && !(existante instanceof DeclarationSystemeVideoSurveillance)) {
+            declarationRepo.delete(existante);
+            existante = null;
+        }
+
+        DeclarationSystemeVideoSurveillance d = existante != null ? (DeclarationSystemeVideoSurveillance) existante : new DeclarationSystemeVideoSurveillance();
         remplirChampBase(d, req.getDateSoumission(), req.getSecteur(), req.getNatureDemande(),
                 req.getResponsableDeclaration(), req.getContactConfidentialite(),
                 req.getDateMiseEnOeuvre(), req.getCategoriesDonnees(), req.getOrigineDonnees(),
@@ -195,6 +234,14 @@ public class DeclarationService {
         d.setMesuresSuppression(req.getMesuresSuppression());
         d.setAttribute(req.getAttribute());
         d.setLocalisationPictogrammes(req.getLocalisationPictogrammes());
+        d.setDureeConservationVideo(req.getDureeConservationVideo());
+        d.setModalitesAccesDistance(req.getModalitesAccesDistance());
+        d.setPersonnesHabilitees(req.getPersonnesHabilitees());
+        d.setServiceResponsable(req.getServiceResponsable());
+        d.setDateSignature(req.getDateSignature());
+        d.setLieuSignature(req.getLieuSignature());
+        d.setPaysDestination(req.getPaysDestination());
+        d.setGarantiesProtectionEtranger(req.getGarantiesProtectionEtranger());
 
         d.setTraitement(trt);
         d.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE);
@@ -213,7 +260,13 @@ public class DeclarationService {
         DPO dpo        = getDpo(emailDpo);
         Traitement trt = getTraitement(req.getTraitementId());
 
-        DeclarationAutorisation d = new DeclarationAutorisation();
+        Declaration existante = getDeclarationReutilisable(trt.getIdTraitement());
+        if (existante != null && !(existante instanceof DeclarationAutorisation)) {
+            declarationRepo.delete(existante);
+            existante = null;
+        }
+
+        DeclarationAutorisation d = existante != null ? (DeclarationAutorisation) existante : new DeclarationAutorisation();
         remplirChampBase(d, req.getDateSoumission(), req.getSecteur(), req.getNatureDemande(),
                 req.getResponsableDeclaration(), req.getContactConfidentialite(),
                 req.getDateMiseEnOeuvre(), req.getCategoriesDonnees(), req.getOrigineDonnees(),
@@ -266,6 +319,13 @@ public class DeclarationService {
         d.setMesuresSecuriteTransfert(req.getMesuresSecuriteTransfert());
         d.setDureeConservationSante(req.getDureeConservationSante());
         d.setOrigineDonnees(req.getOrigineDonnees());
+        d.setFinaliteSante(req.getFinaliteSante());
+        d.setPaysDestinationTransfert(req.getPaysDestinationTransfert());
+        d.setServiceResponsable(req.getServiceResponsable());
+        d.setDateSignature(req.getDateSignature());
+        d.setLieuSignature(req.getLieuSignature());
+        d.setPaysDestination(req.getPaysDestination());
+        d.setGarantiesProtectionEtranger(req.getGarantiesProtectionEtranger());
 
         d.setTraitement(trt);
         d.setOrigineDeclaration(com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE);
@@ -277,8 +337,6 @@ public class DeclarationService {
 
     // ================================================================== //
     //  SOUMISSION DPO : passe une déclaration BROUILLON → EN_ATTENTE     //
-    //  Permet au DPO de finaliser et soumettre une déclaration pré-remplie
-    //  depuis le traitement de l'Utilisateur Métier.
     // ================================================================== //
     @Transactional
     public DeclarationResponse soumettre(Long declarationId, String emailDpo) {
@@ -300,7 +358,6 @@ public class DeclarationService {
 
         journalAuditService.enregistrer(dpo, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notifier le DG
         dgRepo.findAll().stream().findFirst().ifPresent(dg ->
                 notificationService.envoyer(dg, TypeNotification.ALERTE,
                         "Nouvelle déclaration #" + declarationId + " soumise par "
@@ -314,10 +371,6 @@ public class DeclarationService {
     //  CONSULTATION
     // ================================================================== //
     public List<DeclarationResponse> listerParDpo(Long dpoId) {
-        // Seules les déclarations créées manuellement par le DPO (bouton "Déclarer")
-        // doivent apparaître ici. Les brouillons auto-créés en même temps que le
-        // traitement (origine AUTOMATIQUE, statut BROUILLON) restent invisibles
-        // tant qu'ils n'ont pas été repris/soumis explicitement par le DPO.
         return declarationRepo.findByDpoId(dpoId).stream()
                 .filter(d -> d.getOrigineDeclaration() == com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE)
                 .map(d -> toResponse(d, detecterType(d), null))
@@ -325,15 +378,11 @@ public class DeclarationService {
     }
 
     public List<DeclarationResponse> listerEnAttente() {
-        // Seules les déclarations EN_ATTENTE avec un DPO associé sont de vraies soumissions.
-        // Les déclarations créées automatiquement par TraitementService ont statut BROUILLON
-        // et sont exclues de la vue DG jusqu'à ce que le DPO les complète.
         return declarationRepo.findEnAttenteAvecDpo().stream()
                 .map(d -> toResponse(d, detecterType(d), null))
                 .collect(Collectors.toList());
     }
 
-    /** Toutes les déclarations hors BROUILLON — pour l'historique DG. */
     public List<DeclarationResponse> listerHistoriqueDg() {
         return declarationRepo.findAll().stream()
                 .filter(d -> d.getDpo() != null
@@ -342,7 +391,6 @@ public class DeclarationService {
                 .collect(Collectors.toList());
     }
 
-    /** Déclarations approuvées par la DG → en attente de vérification CIL. */
     public List<DeclarationResponse> listerPourCil() {
         return declarationRepo.findByStatut(StatutDeclaration.EN_VERIFICATION_CIL).stream()
                 .map(d -> toResponse(d, detecterType(d), null))
@@ -356,7 +404,7 @@ public class DeclarationService {
     }
 
     // ================================================================== //
-    //  WORKFLOW DG : valider → transmettre à CIL / rejeter → notifier DPO //
+    //  WORKFLOW DG
     // ================================================================== //
     @Transactional
     public DeclarationResponse validerDeclaration(Long declarationId, String emailDg) {
@@ -366,19 +414,16 @@ public class DeclarationService {
         DG dg = dgRepo.findByEmail(emailDg)
                 .orElseThrow(() -> new RuntimeException("DG introuvable : " + emailDg));
 
-        // Transition : EN_ATTENTE → EN_VERIFICATION_CIL
         d.setStatut(StatutDeclaration.EN_VERIFICATION_CIL);
         Declaration saved = declarationRepo.save(d);
 
         journalAuditService.enregistrer(dg, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notifier le DPO que la déclaration a été transmise à la CIL
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.CONFIRMATION,
                     "Votre déclaration #" + declarationId + " a été approuvée par le DG et transmise à la CIL pour vérification de conformité.");
         }
 
-        // Notifier la CIL
         cilRepo.findAll().stream().findFirst().ifPresent(cil ->
                 notificationService.envoyer(cil, TypeNotification.ALERTE,
                         "Une nouvelle déclaration (#" + declarationId + ") vous a été transmise par le DG pour vérification de conformité."));
@@ -399,7 +444,6 @@ public class DeclarationService {
 
         journalAuditService.enregistrer(dg, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notifier le DPO avec le motif de rejet
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.ALERTE,
                     "Votre déclaration #" + declarationId + " a été rejetée par le DG. Motif : " + commentaire
@@ -410,7 +454,7 @@ public class DeclarationService {
     }
 
     // ================================================================== //
-    //  WORKFLOW CIL : valider conformité / rejeter                        //
+    //  WORKFLOW CIL
     // ================================================================== //
     @Transactional
     public DeclarationResponse validerConformiteCil(Long declarationId, String emailCil) {
@@ -426,7 +470,6 @@ public class DeclarationService {
 
         journalAuditService.enregistrer(cil, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notifier le DPO
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.CONFIRMATION,
                     "Votre déclaration #" + declarationId + " a été validée conforme par la CIL. Le processus est terminé.");
@@ -449,7 +492,6 @@ public class DeclarationService {
 
         journalAuditService.enregistrer(cil, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notifier le DPO
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.ALERTE,
                     "Votre déclaration #" + declarationId + " a été jugée non conforme par la CIL. Motif : " + commentaire
@@ -498,6 +540,11 @@ public class DeclarationService {
         d.setDescriptionConnexionFichiers(req.getDescriptionConnexionFichiers());
         d.setMotifsInterconnexion(req.getMotifsInterconnexion());
         d.setIdentiteFichiersInterconnexion(req.getIdentiteFichiersInterconnexion());
+        d.setIntituleTraitement(req.getIntituleTraitement());
+        d.setSupportTraitement(req.getSupportTraitement());
+        d.setCategoriesDonneesCollectees(req.getCategoriesDonneesCollectees());
+        d.setDonneesSensibles(req.getDonneesSensibles());
+        d.setNatureDonneesSensibles(req.getNatureDonneesSensibles());
         mettreAJourChampsBase(d, req);
 
         DeclarationNormale saved = normaleRepo.save(d);
@@ -529,6 +576,11 @@ public class DeclarationService {
         d.setDescriptionCookies(req.getDescriptionCookies());
         d.setDureeConservationCookies(req.getDureeConservationCookies());
         d.setTelechargementTraitement(req.getTelechargementTraitement());
+        d.setUrlSite(req.getUrlSite());
+        d.setTypeCookies(req.getTypeCookies());
+        d.setConsentementCookies(req.getConsentementCookies());
+        d.setFormulairesEnLigne(req.getFormulairesEnLigne());
+        d.setDonneesFormulaires(req.getDonneesFormulaires());
         mettreAJourChampsBase(d, req);
 
         DeclarationCollecteSiteInternet saved = collecteSiteRepo.save(d);
@@ -568,6 +620,9 @@ public class DeclarationService {
         d.setMesuresSuppression(req.getMesuresSuppression());
         d.setAttribute(req.getAttribute());
         d.setLocalisationPictogrammes(req.getLocalisationPictogrammes());
+        d.setDureeConservationVideo(req.getDureeConservationVideo());
+        d.setModalitesAccesDistance(req.getModalitesAccesDistance());
+        d.setPersonnesHabilitees(req.getPersonnesHabilitees());
         mettreAJourChampsBase(d, req);
 
         DeclarationSystemeVideoSurveillance saved = videoRepo.save(d);
@@ -625,6 +680,8 @@ public class DeclarationService {
         d.setMesuresSecuriteTransfert(req.getMesuresSecuriteTransfert());
         d.setDureeConservationSante(req.getDureeConservationSante());
         d.setOrigineDonnees(req.getOrigineDonnees());
+        d.setFinaliteSante(req.getFinaliteSante());
+        d.setPaysDestinationTransfert(req.getPaysDestinationTransfert());
         mettreAJourChampsBase(d, req);
 
         DeclarationAutorisation saved = autorisationRepo.save(d);
@@ -659,7 +716,6 @@ public class DeclarationService {
     private void postCreation(DPO dpo, Traitement trt, Declaration saved, String type) {
         journalAuditService.enregistrer(dpo, TypeAction.CREATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
 
-        // Notification au DG
         dgRepo.findAll().stream().findFirst().ifPresent(dg ->
                 notificationService.envoyer(dg, TypeNotification.ALERTE,
                         "Nouvelle déclaration de type " + type + " soumise par "
@@ -699,6 +755,11 @@ public class DeclarationService {
             if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
             if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
             if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
+            if (r.getServiceResponsable() != null) d.setServiceResponsable(r.getServiceResponsable());
+            if (r.getDateSignature() != null) d.setDateSignature(r.getDateSignature());
+            if (r.getLieuSignature() != null) d.setLieuSignature(r.getLieuSignature());
+            if (r.getPaysDestination() != null) d.setPaysDestination(r.getPaysDestination());
+            if (r.getGarantiesProtectionEtranger() != null) d.setGarantiesProtectionEtranger(r.getGarantiesProtectionEtranger());
         } else if (req instanceof DeclarationCollecteSiteInternetRequest r) {
             if (r.getDateSoumission() != null) d.setDateSoumission(r.getDateSoumission());
             if (r.getSecteur() != null) d.setSecteur(r.getSecteur());
@@ -730,6 +791,11 @@ public class DeclarationService {
             if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
             if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
             if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
+            if (r.getServiceResponsable() != null) d.setServiceResponsable(r.getServiceResponsable());
+            if (r.getDateSignature() != null) d.setDateSignature(r.getDateSignature());
+            if (r.getLieuSignature() != null) d.setLieuSignature(r.getLieuSignature());
+            if (r.getPaysDestination() != null) d.setPaysDestination(r.getPaysDestination());
+            if (r.getGarantiesProtectionEtranger() != null) d.setGarantiesProtectionEtranger(r.getGarantiesProtectionEtranger());
         } else if (req instanceof DeclarationVideoSurveillanceRequest r) {
             if (r.getDateSoumission() != null) d.setDateSoumission(r.getDateSoumission());
             if (r.getSecteur() != null) d.setSecteur(r.getSecteur());
@@ -761,6 +827,11 @@ public class DeclarationService {
             if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
             if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
             if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
+            if (r.getServiceResponsable() != null) d.setServiceResponsable(r.getServiceResponsable());
+            if (r.getDateSignature() != null) d.setDateSignature(r.getDateSignature());
+            if (r.getLieuSignature() != null) d.setLieuSignature(r.getLieuSignature());
+            if (r.getPaysDestination() != null) d.setPaysDestination(r.getPaysDestination());
+            if (r.getGarantiesProtectionEtranger() != null) d.setGarantiesProtectionEtranger(r.getGarantiesProtectionEtranger());
         } else if (req instanceof DeclarationAutorisationRequest r) {
             if (r.getDateSoumission() != null) d.setDateSoumission(r.getDateSoumission());
             if (r.getSecteur() != null) d.setSecteur(r.getSecteur());
@@ -792,6 +863,11 @@ public class DeclarationService {
             if (r.getDelaiCommunicationDroits() != null) d.setDelaiCommunicationDroits(r.getDelaiCommunicationDroits());
             if (r.getNomPrenomResponsable() != null) d.setNomPrenomResponsable(r.getNomPrenomResponsable());
             if (r.getFonctionResponsable() != null) d.setFonctionResponsable(r.getFonctionResponsable());
+            if (r.getServiceResponsable() != null) d.setServiceResponsable(r.getServiceResponsable());
+            if (r.getDateSignature() != null) d.setDateSignature(r.getDateSignature());
+            if (r.getLieuSignature() != null) d.setLieuSignature(r.getLieuSignature());
+            if (r.getPaysDestination() != null) d.setPaysDestination(r.getPaysDestination());
+            if (r.getGarantiesProtectionEtranger() != null) d.setGarantiesProtectionEtranger(r.getGarantiesProtectionEtranger());
             if (r.getDescriptionSensibilisation() != null && d instanceof DeclarationAutorisation da) da.setDescriptionSensibilisation(r.getDescriptionSensibilisation());
         }
     }
@@ -856,6 +932,48 @@ public class DeclarationService {
                 .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + id));
     }
 
+    /**
+     * Retourne la déclaration existante d'un traitement (le brouillon
+     * auto-créé à la création du traitement, ou une déclaration déjà
+     * complétée) si elle peut encore être réutilisée/complétée, càd si
+     * elle n'a pas encore été soumise (statut BROUILLON ou REJETEE_*).
+     *
+     * Si le traitement a déjà une déclaration SOUMISE, on lève une
+     * exception : un traitement ne peut être déclaré qu'une seule fois.
+     */
+    private Declaration getDeclarationReutilisable(Long traitementId) {
+        List<Declaration> existantes = declarationRepo.findAllByTraitement_IdTraitementOrderByDateSoumissionDesc(traitementId);
+        if (existantes == null || existantes.isEmpty()) return null;
+
+        Declaration plusRecente = existantes.get(0);
+        StatutDeclaration s = plusRecente.getStatut();
+
+        boolean dejaSoumise = s != null
+                && s != StatutDeclaration.BROUILLON
+                && s != StatutDeclaration.REJETEE_DG
+                && s != StatutDeclaration.REJETEE_CIL;
+
+        if (dejaSoumise) {
+            throw new RuntimeException(
+                    "Ce traitement a déjà été déclaré (déclaration #" + plusRecente.getIdDeclaration()
+                            + ", statut : " + s + "). Un traitement ne peut être déclaré qu'une seule fois.");
+        }
+        return plusRecente;
+    }
+
+    /**
+     * Retourne la déclaration (brouillon ou existante, avec toutes ses
+     * données) associée à un traitement, pour pré-remplissage du formulaire
+     * côté DPO. Retourne null si aucune déclaration n'existe encore.
+     */
+    @Transactional(readOnly = true)
+    public DeclarationResponse getBrouillonByTraitement(Long traitementId) {
+        List<Declaration> existantes = declarationRepo.findAllByTraitement_IdTraitementOrderByDateSoumissionDesc(traitementId);
+        if (existantes == null || existantes.isEmpty()) return null;
+        Declaration d = existantes.get(0);
+        return toResponse(d, detecterType(d), d.getTraitement());
+    }
+
     private String detecterType(Declaration d) {
         if (d instanceof DeclarationNormale)                      return "NORMALE";
         if (d instanceof DeclarationCollecteSiteInternet)         return "COLLECTE_SITE";
@@ -865,35 +983,165 @@ public class DeclarationService {
     }
 
     private DeclarationResponse toResponse(Declaration d, String type, Traitement trt) {
-        String dpoNom = null;
-        Long   dpoId  = null;
-        if (d.getDpo() != null) {
-            dpoId  = d.getDpo().getId();
-            dpoNom = d.getDpo().getPrenom() + " " + d.getDpo().getNom();
-        }
-        // Fallback : si aucun traitement n'est passé explicitement (cas des listes),
-        // on utilise la relation persistée sur la déclaration elle-même.
+        DeclarationResponse r = new DeclarationResponse();
+
+        r.setIdDeclaration(d.getIdDeclaration());
+        r.setTypeDeclaration(type);
+        r.setDateSoumission(d.getDateSoumission());
+        r.setStatut(d.getStatut());
+        r.setOrigineDeclaration(d.getOrigineDeclaration() != null ? d.getOrigineDeclaration().name() : "MANUELLE");
+
         Traitement effectiveTrt = trt != null ? trt : d.getTraitement();
-        Long   trtId   = effectiveTrt != null ? effectiveTrt.getIdTraitement() : null;
-        String trtDesc = effectiveTrt != null ? effectiveTrt.getDescription()  : null;
+        if (effectiveTrt != null) {
+            r.setTraitementId(effectiveTrt.getIdTraitement());
+            r.setTraitementDescription(effectiveTrt.getDescription());
+            r.setTraitementNom(effectiveTrt.getNom());
+        }
+        if (d.getDpo() != null) {
+            r.setDpoId(d.getDpo().getId());
+            r.setDpoNomPrenom(d.getDpo().getPrenom() + " " + d.getDpo().getNom());
+        }
+        if (d.getCil() != null) {
+            r.setCilId(d.getCil().getId());
+            r.setCilNomPrenom(d.getCil().getPrenom() + " " + d.getCil().getNom());
+        }
 
-        String origine = d.getOrigineDeclaration() != null ? d.getOrigineDeclaration().name() : "MANUELLE";
+        r.setSecteur(d.getSecteur());
+        r.setNatureDemande(d.getNatureDemande());
+        r.setResponsableDeclaration(d.getResponsableDeclaration());
+        r.setContactConfidentialite(d.getContactConfidentialite());
+        r.setDateMiseEnOeuvre(d.getDateMiseEnOeuvre());
+        r.setCategoriesDonnees(d.getCategoriesDonnees());
+        r.setOrigineDonnees(d.getOrigineDonnees());
+        r.setDureeConservation(d.getDureeConservation());
+        r.setLieuStockage(d.getLieuStockage());
+        r.setCommunicationAutresOrganismes(d.getCommunicationAutresOrganismes());
+        r.setDestinataireNom(d.getDestinataireNom());
+        r.setDestinataireAdresse(d.getDestinataireAdresse());
+        r.setTexteJuridiqueCommunication(d.getTexteJuridiqueCommunication());
+        r.setFinaliteCommunication(d.getFinaliteCommunication());
+        r.setDestinataireConformeCil(d.getDestinataireConformeCil());
+        r.setTransfertPaysEtranger(d.getTransfertPaysEtranger());
+        r.setPaysDestination(d.getPaysDestination());
+        r.setGarantiesProtectionEtranger(d.getGarantiesProtectionEtranger());
+        r.setRecoursSousTraitant(d.getRecoursSousTraitant());
+        r.setContratConfidentialiteSousTraitant(d.getContratConfidentialiteSousTraitant());
+        r.setRolesSousTraitants(d.getRolesSousTraitants());
+        r.setCategoriesPersonnesAcces(d.getCategoriesPersonnesAcces());
+        r.setPolitiqueAccesBatiments(d.getPolitiqueAccesBatiments());
+        r.setMesuresSecurite(d.getMesuresSecurite());
+        r.setMesuresSensibilisation(d.getMesuresSensibilisation());
+        r.setMoyensInformationDroits(d.getMoyensInformationDroits());
+        r.setMoyensExerciceDroits(d.getMoyensExerciceDroits());
+        r.setCoordonneesExerciceDroits(d.getCoordonneesExerciceDroits());
+        r.setDelaiCommunicationDroits(d.getDelaiCommunicationDroits());
+        r.setNomPrenomResponsable(d.getNomPrenomResponsable());
+        r.setFonctionResponsable(d.getFonctionResponsable());
+        r.setServiceResponsable(d.getServiceResponsable());
+        r.setDateSignature(d.getDateSignature());
+        r.setLieuSignature(d.getLieuSignature());
 
-        return new DeclarationResponse(
-                d.getIdDeclaration(),
-                type,
-                d.getDateSoumission(),
-                d.getSecteur(),
-                d.getNatureDemande(),
-                d.getStatut(),
-                d.getResponsableDeclaration(),
-                d.getContactConfidentialite(),
-                d.getDateMiseEnOeuvre(),
-                dpoId,
-                dpoNom,
-                trtId,
-                trtDesc,
-                origine
-        );
+        if (d instanceof DeclarationNormale dn) {
+            r.setDenominationTraitement(dn.getDenominationTraitement());
+            r.setFinaliteTraitement(dn.getFinaliteTraitement());
+            r.setTexteJuridique(dn.getTexteJuridique());
+            r.setCategoriesPersonnesConcernees(dn.getCategoriesPersonnesConcernees());
+            r.setNombrePersonnesConcernees(dn.getNombrePersonnesConcernees());
+            r.setTypeTraitement(dn.getTypeTraitement());
+            r.setCaracteristiquesTechniques(dn.getCaracteristiquesTechniques());
+            r.setDescriptionProcedureManuelle(dn.getDescriptionProcedureManuelle());
+            r.setCaracteristiquesSysteme(dn.getCaracteristiquesSysteme());
+            r.setPolitiqueAccesSystemes(dn.getPolitiqueAccesSystemes());
+            r.setModalitesDiffusionResultatsBool(dn.getModalitesDiffusionResultats());
+            r.setProtocoleRecherche(dn.getProtocoleRecherche());
+            r.setDescriptionConnexionFichiers(dn.getDescriptionConnexionFichiers());
+            r.setMotifsInterconnexion(dn.getMotifsInterconnexion());
+            r.setIdentiteFichiersInterconnexion(dn.getIdentiteFichiersInterconnexion());
+            r.setIntituleTraitement(dn.getIntituleTraitement());
+            r.setSupportTraitement(dn.getSupportTraitement());
+            r.setCategoriesDonneesCollectees(dn.getCategoriesDonneesCollectees());
+            r.setDonneesSensibles(dn.getDonneesSensibles());
+            r.setNatureDonneesSensibles(dn.getNatureDonneesSensibles());
+        } else if (d instanceof DeclarationCollecteSiteInternet dc) {
+            r.setDenominationTraitement(dc.getDenominationTraitement());
+            r.setFinaliteTraitement(dc.getFinaliteTraitement());
+            r.setTexteJuridique(dc.getTexteJuridique());
+            r.setCategoriesPersonnesConcernees(dc.getCategoriesPersonnesConcernees());
+            r.setCaracteristiquesMainStructure(dc.getCaracteristiquesMainStructure());
+            r.setCaracteristiquesTechniques(dc.getCaracteristiquesTechniques());
+            r.setTypeTraitement(dc.getTypeTraitement());
+            r.setDonneesConnexion(dc.getDonneesConnexion());
+            r.setDescriptionDonneesConnexion(dc.getDescriptionDonneesConnexion());
+            r.setCookies(dc.getCookies());
+            r.setDescriptionCookies(dc.getDescriptionCookies());
+            r.setDureeConservationCookies(dc.getDureeConservationCookies());
+            r.setTelechargementTraitement(dc.getTelechargementTraitement());
+            r.setUrlSite(dc.getUrlSite());
+            r.setTypeCookies(dc.getTypeCookies());
+            r.setConsentementCookies(dc.getConsentementCookies());
+            r.setFormulairesEnLigne(dc.getFormulairesEnLigne());
+            r.setDonneesFormulaires(dc.getDonneesFormulaires());
+        } else if (d instanceof DeclarationSystemeVideoSurveillance dv) {
+            r.setFinalites(dv.getFinalites());
+            r.setAdresseInstallation(dv.getAdresseInstallation());
+            r.setNatureEnvironnement(dv.getNatureEnvironnement());
+            r.setEmplacementCameras(dv.getEmplacementCameras());
+            r.setNombreTotalCameras(dv.getNombreTotalCameras());
+            r.setModeleDispositif(dv.getModeleDispositif());
+            r.setVisualisationTempsReel(dv.getVisualisationTempsReel());
+            r.setModeTransfert(dv.getModeTransfert());
+            r.setSonDeSon(dv.getSonDeSon());
+            r.setTypeEnregistrement(dv.getTypeEnregistrement());
+            r.setNatureEnregistrement(dv.getNatureEnregistrement());
+            r.setLiaisonReseau(dv.getLiaisonReseau());
+            r.setUtilisationSystemesExperts(dv.getUtilisationSystemesExperts());
+            r.setDescriptionSystemesExperts(dv.getDescriptionSystemesExperts());
+            r.setFonctionnalitesTraitement(dv.getFonctionnalitesTraitement());
+            r.setAccesImagesDistance(dv.getAccesImagesDistance());
+            r.setAccesPhysique(dv.getAccesPhysique());
+            r.setAccesLogique(dv.getAccesLogique());
+            r.setMesuresSuppression(dv.getMesuresSuppression());
+            r.setAttribute(dv.getAttribute());
+            r.setLocalisationPictogrammes(dv.getLocalisationPictogrammes());
+            r.setDureeConservationVideo(dv.getDureeConservationVideo());
+            r.setModalitesAccesDistance(dv.getModalitesAccesDistance());
+            r.setPersonnesHabilitees(dv.getPersonnesHabilitees());
+        } else if (d instanceof DeclarationAutorisation da) {
+            r.setDenominationTraitement(da.getDenominationTraitement());
+            r.setFinaliteTraitement(da.getFinaliteTraitement());
+            r.setTexteJuridique(da.getTexteJuridique());
+            r.setCategoriesPersonnesConcernees(da.getCategoriesPersonnesConcernees());
+            r.setNombrePersonnesConcernees(da.getNombrePersonnesConcernees());
+            r.setTypeTraitement(da.getTypeTraitement());
+            r.setCaracteristiquesTechniques(da.getCaracteristiquesTechniques());
+            r.setModeTransfert(da.getModeTransfert());
+            r.setCertificationSecurite(da.getCertificationSecurite());
+            r.setFonctionnalitesSysteme(da.getFonctionnalitesSysteme());
+            r.setPolitiqueAccesSystemes(da.getPolitiqueAccesSystemes());
+            r.setDescriptionFichier(da.getDescriptionFichier());
+            r.setTraitementDonneesSante(da.getTraitementDonneesSante());
+            r.setProfessionalSante(da.getProfessionalSante());
+            r.setModalitesDiffusionResultats(da.getModalitesDiffusionResultats());
+            r.setDestinataireCie(da.getDestinataireCie());
+            r.setConnexionFichiers(da.getConnexionFichiers());
+            r.setCategoriesDonneesInterconnexion(da.getCategoriesDonneesInterconnexion());
+            r.setDureeInterconnexion(da.getDureeInterconnexion());
+            r.setIdentiteFichiersInterconnexion(da.getIdentiteFichiersInterconnexion());
+            r.setPaysDestinationProtectionDonnees(da.getPaysDestinationProtectionDonnees());
+            r.setDescriptionFichierTransfert(da.getDescriptionFichierTransfert());
+            r.setNombrePersonnesTransfert(da.getNombrePersonnesTransfert());
+            r.setCategoriesDonneesTransfert(da.getCategoriesDonneesTransfert());
+            r.setFondementJuridique(da.getFondementJuridique());
+            r.setConsentementPersonnesConcernees(da.getConsentementPersonnesConcernees());
+            r.setMethodeRecueilConsentement(da.getMethodeRecueilConsentement());
+            r.setMesuresSecuriteTransfert(da.getMesuresSecuriteTransfert());
+            r.setDestinataireNomPrenom(da.getDestinataireNomPrenom());
+            r.setDureeConservationSante(da.getDureeConservationSante());
+            r.setDescriptionSensibilisation(da.getDescriptionSensibilisation());
+            r.setFinaliteSante(da.getFinaliteSante());
+            r.setPaysDestinationTransfert(da.getPaysDestinationTransfert());
+        }
+
+        return r;
     }
 }

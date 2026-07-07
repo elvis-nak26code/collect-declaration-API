@@ -57,4 +57,16 @@ public class DeclarationCollecteSiteInternetRequest {
     private String descriptionCookies;
     private String dureeConservationCookies;
     private String telechargementTraitement;
+    private String urlSite;
+    private String typeCookies;
+    private Boolean consentementCookies;
+    private Boolean formulairesEnLigne;
+    private String donneesFormulaires;
+
+    // ── Champs communs de signature / transfert (Declaration) ────────────
+    private String serviceResponsable;
+    private LocalDate dateSignature;
+    private String lieuSignature;
+    private String paysDestination;
+    private String garantiesProtectionEtranger;
 }

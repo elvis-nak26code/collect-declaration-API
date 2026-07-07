@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -179,8 +180,8 @@ public class TraitementController {
     public ResponseEntity<TraitementResponse> updateTraitement(
             @PathVariable Long id,
             @RequestBody TraitementRequest request,
-            @AuthenticationPrincipal String email) {
-        return ResponseEntity.ok(traitementService.updateTraitement(id, request, email));
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(traitementService.updateTraitement(id, request, userDetails.getUsername()));
     }
 
     // ------------------------------------------------------------------ //
@@ -191,8 +192,8 @@ public class TraitementController {
     @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_UTILISATEUR_METIER','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<Void> deleteTraitement(
             @PathVariable Long id,
-            @AuthenticationPrincipal String email) {
-        traitementService.deleteTraitement(id, email);
+            @AuthenticationPrincipal UserDetails userDetails) {
+        traitementService.deleteTraitement(id, userDetails.getUsername());
         return ResponseEntity.noContent().build();
     }
 

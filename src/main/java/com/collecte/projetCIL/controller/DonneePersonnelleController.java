@@ -33,9 +33,11 @@ public class DonneePersonnelleController {
             @RequestParam("fichier") MultipartFile fichier,
             @RequestParam("traitementId") Long traitementId) throws IOException {
 
-        if (fichier.isEmpty()) return ResponseEntity.badRequest().build();
+        if (fichier.isEmpty())
+            throw new RuntimeException("Le fichier envoyé est vide. Veuillez sélectionner un fichier Excel valide.");
         String filename = fichier.getOriginalFilename();
-        if (filename == null || !filename.endsWith(".xlsx")) return ResponseEntity.badRequest().build();
+        if (filename == null || !filename.endsWith(".xlsx"))
+            throw new RuntimeException("Format de fichier invalide : seuls les fichiers .xlsx sont acceptés.");
 
         return ResponseEntity.ok(donneePersonnelleService.importerDepuisExcel(fichier, traitementId));
     }

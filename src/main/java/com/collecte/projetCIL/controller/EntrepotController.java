@@ -43,10 +43,11 @@ public class EntrepotController {
     public ResponseEntity<ImportResultResponse> importerExcel(
             @RequestParam("fichier") MultipartFile fichier) throws IOException {
 
-        if (fichier.isEmpty()) return ResponseEntity.badRequest().build();
+        if (fichier.isEmpty())
+            throw new RuntimeException("Le fichier envoyé est vide. Veuillez sélectionner un fichier Excel valide.");
         String filename = fichier.getOriginalFilename();
         if (filename == null || !filename.toLowerCase().endsWith(".xlsx"))
-            return ResponseEntity.badRequest().build();
+            throw new RuntimeException("Format de fichier invalide : seuls les fichiers .xlsx sont acceptés.");
 
         return ResponseEntity.ok(entrepotService.importerDepuisExcel(fichier));
     }

@@ -3,6 +3,7 @@ package com.collecte.projetCIL.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -59,6 +60,18 @@ public class TraitementService {
     private final DeclarationAutorisationRepository             declarationAutorisationRepository;
     private final JournalAuditService                           journalAuditService;
     private final NotificationService                           notificationService;
+
+    // ------------------------------------------------------------------ //
+    //  HELPER : récupère LA déclaration d'un traitement (la plus récente)
+    //  Remplace l'ancien declarationRepository.findByTraitementId(...)
+    //  qui plantait (NonUniqueResultException) dès qu'un traitement avait
+    //  plus d'une déclaration en base.
+    // ------------------------------------------------------------------ //
+    private Optional<Declaration> findDeclarationByTraitementId(Long traitementId) {
+        List<Declaration> declarations =
+                declarationRepository.findAllByTraitement_IdTraitementOrderByDateSoumissionDesc(traitementId);
+        return declarations.isEmpty() ? Optional.empty() : Optional.of(declarations.get(0));
+    }
 
     // ------------------------------------------------------------------ //
     //  HELPERS PRIVÉS
@@ -397,7 +410,7 @@ public class TraitementService {
         traitement.setSessionCollecte(session);
         traitementRepository.save(traitement);
 
-        declarationRepository.findByTraitementId(traitementId).ifPresent(decl -> {
+        findDeclarationByTraitementId(traitementId).ifPresent(decl -> {
             if (decl.getDpo() == null) {
                 decl.setDpo(session.getDpo());
                 declarationRepository.save(decl);
@@ -445,7 +458,7 @@ public class TraitementService {
                     .orElseThrow(() -> new RuntimeException("DPO introuvable : " + dpoId));
         }
 
-        Declaration declaration = declarationRepository.findByTraitementId(traitementId).orElse(null);
+        Declaration declaration = findDeclarationByTraitementId(traitementId).orElse(null);
         if (declaration != null && declaration.getDpo() == null) {
             declaration.setDpo(dpo);
             declarationRepository.save(declaration);
@@ -477,7 +490,7 @@ public class TraitementService {
     // ------------------------------------------------------------------ //
     private void verifierDeclarationModifiable(Traitement traitement, boolean isAdmin) {
         if (isAdmin) return;
-        declarationRepository.findByTraitementId(traitement.getIdTraitement()).ifPresent(decl -> {
+        findDeclarationByTraitementId(traitement.getIdTraitement()).ifPresent(decl -> {
             StatutDeclaration s = decl.getStatut();
             if (s == StatutDeclaration.APPROUVEE_DG
                     || s == StatutDeclaration.EN_VERIFICATION_CIL
@@ -518,7 +531,7 @@ public class TraitementService {
     }
 
     // ------------------------------------------------------------------ //
-    //  Supprimer un traitement (et sa déclaration associée)
+    //  Supprimer un traitement (et sa/ses déclaration(s) associée(s))
     // ------------------------------------------------------------------ //
     @Transactional
     public void deleteTraitement(Long id, String emailUser) {
@@ -528,7 +541,12 @@ public class TraitementService {
         boolean isAdmin = administrateurRepository.findByEmail(emailUser).isPresent();
         verifierDeclarationModifiable(traitement, isAdmin);
 
-        declarationRepository.findByTraitementId(id).ifPresent(declarationRepository::delete);
+        // Supprime TOUTES les déclarations liées (au cas où il y en aurait plusieurs,
+        // pour éviter de laisser des lignes orphelines en base).
+        List<Declaration> declarations =
+                declarationRepository.findAllByTraitement_IdTraitementOrderByDateSoumissionDesc(id);
+        declarationRepository.deleteAll(declarations);
+
         traitementRepository.delete(traitement);
 
         journalAuditService.enregistrer(traitement.getUtilisateurMetier(), TypeAction.SUPPRESSION,
@@ -545,7 +563,7 @@ public class TraitementService {
 
         Long declId = declarationId;
         if (declId == null) {
-            declId = declarationRepository.findByTraitementId(t.getIdTraitement())
+            declId = findDeclarationByTraitementId(t.getIdTraitement())
                     .map(Declaration::getIdDeclaration)
                     .orElse(null);
         }
@@ -607,7 +625,7 @@ public class TraitementService {
                         (t.getSessionCollecte() != null
                                 && t.getSessionCollecte().getDpo() != null
                                 && t.getSessionCollecte().getDpo().getId().equals(dpoId))
-                        || declarationRepository.findByTraitementId(t.getIdTraitement())
+                        || findDeclarationByTraitementId(t.getIdTraitement())
                                 .map(d -> d.getDpo() != null && d.getDpo().getId().equals(dpoId))
                                 .orElse(false)
                 )

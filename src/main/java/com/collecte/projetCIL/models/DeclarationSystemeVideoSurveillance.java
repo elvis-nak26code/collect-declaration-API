@@ -75,4 +75,13 @@ public class DeclarationSystemeVideoSurveillance extends Declaration {
 
     @Column(name = "localisation_pictogrammes")
     private String localisationPictogrammes;
+
+    @Column(name = "duree_conservation_video")
+    private String dureeConservationVideo;
+
+    @Column(name = "modalites_acces_distance")
+    private String modalitesAccesDistance;
+
+    @Column(name = "personnes_habilitees")
+    private String personnesHabilitees;
 }

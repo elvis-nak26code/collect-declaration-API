@@ -59,4 +59,16 @@ public class DeclarationNormaleRequest {
     private Boolean descriptionConnexionFichiers;
     private String motifsInterconnexion;
     private String identiteFichiersInterconnexion;
+    private String intituleTraitement;
+    private String supportTraitement;
+    private String categoriesDonneesCollectees;
+    private Boolean donneesSensibles;
+    private String natureDonneesSensibles;
+
+    // ── Champs communs de signature / transfert (Declaration) ────────────
+    private String serviceResponsable;
+    private LocalDate dateSignature;
+    private String lieuSignature;
+    private String paysDestination;
+    private String garantiesProtectionEtranger;
 }

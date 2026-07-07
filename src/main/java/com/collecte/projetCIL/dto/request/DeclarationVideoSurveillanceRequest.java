@@ -65,4 +65,14 @@ public class DeclarationVideoSurveillanceRequest {
     private Boolean mesuresSuppression;
     private String attribute;
     private String localisationPictogrammes;
+    private String dureeConservationVideo;
+    private String modalitesAccesDistance;
+    private String personnesHabilitees;
+
+    // ── Champs communs de signature / transfert (Declaration) ────────────
+    private String serviceResponsable;
+    private LocalDate dateSignature;
+    private String lieuSignature;
+    private String paysDestination;
+    private String garantiesProtectionEtranger;
 }

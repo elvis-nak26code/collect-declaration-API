@@ -24,10 +24,6 @@ public class VerificationController {
      */
     @GetMapping("/fonction")
     public ResponseEntity<Map<String, String>> getFonction(@RequestParam String email) {
-        try {
-            return ResponseEntity.ok(verificationService.getFonctionByEmail(email));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(verificationService.getFonctionByEmail(email));
     }
 }

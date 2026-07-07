@@ -112,6 +112,25 @@ public class SessionCollecteService {
     }
 
     // ------------------------------------------------------------------ //
+    //  Modifier une session existante
+    // ------------------------------------------------------------------ //
+    @Transactional
+    public SessionCollecteResponse modifierSession(Long id, SessionCollecteRequest request) {
+        SessionCollecte session = sessionCollecteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Session introuvable avec l'id : " + id));
+
+        if (request.getNomSession() != null)   session.setNomSession(request.getNomSession());
+        if (request.getLieu() != null)         session.setLieu(request.getLieu());
+        if (request.getTypeCollecte() != null) session.setTypeCollecte(request.getTypeCollecte());
+        if (request.getDescription() != null)  session.setDescription(request.getDescription());
+        if (request.getDateDebut() != null)     session.setDateDebut(request.getDateDebut());
+        if (request.getDateFin() != null)       session.setDateFin(request.getDateFin());
+
+        SessionCollecte saved = sessionCollecteRepository.save(session);
+        return toResponse(saved);
+    }
+
+    // ------------------------------------------------------------------ //
     //  Mapper entité -> DTO réponse
     // ------------------------------------------------------------------ //
     private SessionCollecteResponse toResponse(SessionCollecte s) {

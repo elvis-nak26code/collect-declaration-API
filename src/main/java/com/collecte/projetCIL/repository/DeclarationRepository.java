@@ -35,4 +35,7 @@ public interface DeclarationRepository extends JpaRepository<Declaration, Long> 
     /** Déclaration liée à un traitement donné (s'il en existe une). */
     @Query("SELECT d FROM Declaration d WHERE d.traitement.idTraitement = :traitementId")
     java.util.Optional<Declaration> findByTraitementId(@Param("traitementId") Long traitementId);
+
+    // Dans DeclarationRepository
+   List<Declaration> findAllByTraitement_IdTraitementOrderByDateSoumissionDesc(Long traitementId);
 }

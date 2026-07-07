@@ -103,6 +103,8 @@ public class SecurityConfig {
                 // Endpoints publics
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/api/auth/inscription").permitAll()
+                .requestMatchers("/api/auth/mot-de-passe-oublie").permitAll()
+                .requestMatchers("/api/auth/reinitialiser-mot-de-passe").permitAll()
                 // .requestMatchers("/api/notifications/stream/**").permitAll()
                 // Endpoints admin uniquement
                 .requestMatchers("/api/admin/**").hasRole("ADMINISTRATEUR")

@@ -77,4 +77,13 @@ public class DeclarationAutorisationRequest {
     private String mesuresSecuriteTransfert;
     private String destinataireNomPrenom;
     private String dureeConservationSante;
+    private String finaliteSante;
+    private String paysDestinationTransfert;
+
+    // ── Champs communs de signature / transfert (Declaration) ────────────
+    private String serviceResponsable;
+    private LocalDate dateSignature;
+    private String lieuSignature;
+    private String paysDestination;
+    private String garantiesProtectionEtranger;
 }

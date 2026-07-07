@@ -52,4 +52,19 @@ public class DeclarationCollecteSiteInternet extends Declaration {
 
     @Column(name = "telechargement_traitement")
     private String telechargementTraitement;
+
+    @Column(name = "url_site")
+    private String urlSite;
+
+    @Column(name = "type_cookies")
+    private String typeCookies;
+
+    @Column(name = "consentement_cookies")
+    private Boolean consentementCookies;
+
+    @Column(name = "formulaires_en_ligne")
+    private Boolean formulairesEnLigne;
+
+    @Column(name = "donnees_formulaires")
+    private String donneesFormulaires;
 }

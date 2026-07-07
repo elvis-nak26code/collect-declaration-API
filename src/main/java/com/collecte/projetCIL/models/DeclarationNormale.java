@@ -59,4 +59,19 @@ public class DeclarationNormale extends Declaration {
 
     @Column(name = "identite_fichiers_interconnexion")
     private String identiteFichiersInterconnexion;
+
+    @Column(name = "intitule_traitement")
+    private String intituleTraitement;
+
+    @Column(name = "support_traitement")
+    private String supportTraitement;
+
+    @Column(name = "categories_donnees_collectees")
+    private String categoriesDonneesCollectees;
+
+    @Column(name = "donnees_sensibles")
+    private Boolean donneesSensibles;
+
+    @Column(name = "nature_donnees_sensibles")
+    private String natureDonneesSensibles;
 }

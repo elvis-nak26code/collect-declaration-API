@@ -113,7 +113,9 @@ public class DonneePersonnelleService {
                 copieEntrepot.setDateCollecte(LocalDateTime.now());
                 copieEntrepot.setTypeDonnee(typeDonnee);
                 copieEntrepot.setPersonne(personne);
-                copieEntrepot.setUsager(usager);
+                // ⚠️ Ne PAS lier l'usager ici : sinon findByUsagerId() ramène
+                // à la fois la ligne du traitement ET cette copie entrepôt,
+                // ce qui fait apparaître chaque donnée 2 fois côté usager.
                 copieEntrepot.setTraitement(null); // entrepôt = pas de traitement
                 donneePersonnelleRepository.save(copieEntrepot);
             }
@@ -342,12 +344,12 @@ public class DonneePersonnelleService {
     }
 
     public List<DonneePersonnelleResponse> listerParUsager(Long usagerId) {
-        return donneePersonnelleRepository.findByUsagerId(usagerId)
+        return donneePersonnelleRepository.findByUsagerIdHorsEntrepot(usagerId)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     public List<DonneePersonnelleResponse> listerParPersonne(Long personneId) {
-        return donneePersonnelleRepository.findByPersonneId(personneId)
+        return donneePersonnelleRepository.findByPersonneIdHorsEntrepot(personneId)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 

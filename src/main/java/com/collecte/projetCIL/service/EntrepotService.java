@@ -207,13 +207,35 @@ public class EntrepotService {
     // ─── Rattachement ─────────────────────────────────────────────────────────
 
     public DonneePersonnelleResponse attacher(Long donneeId, Long traitementId) {
-        DonneePersonnelle donnee = donneePersonnelleRepository.findById(donneeId)
-                .orElseThrow(() -> new RuntimeException("Donnée introuvable : " + donneeId));
+        DonneePersonnelle donneeEntrepot = donneePersonnelleRepository.findById(donneeId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Cette donnée n'existe pas (ou plus) dans l'entrepôt : " + donneeId));
+
+        if (donneeEntrepot.getTraitement() != null) {
+            throw new RuntimeException(
+                    "Cette donnée n'est plus dans l'entrepôt : elle est déjà rattachée au traitement \""
+                    + donneeEntrepot.getTraitement().getNom() + "\".");
+        }
+
         Traitement traitement = traitementRepository.findById(traitementId)
                 .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + traitementId));
 
-        donnee.setTraitement(traitement);
-        DonneePersonnelle saved = donneePersonnelleRepository.save(donnee);
+        if (estDejaDansTraitement(donneeEntrepot, traitementId)) {
+            throw new RuntimeException(
+                    "Cette donnée (" + nomType(donneeEntrepot) + " = " + donneeEntrepot.getValeur()
+                    + ") est déjà rattachée au traitement \"" + traitement.getNom() + "\".");
+        }
+
+        // ── On COPIE la donnée dans le traitement : l'original reste dans
+        //    l'entrepôt, disponible pour être rattaché à d'autres traitements.
+        DonneePersonnelle copie = new DonneePersonnelle();
+        copie.setValeur(donneeEntrepot.getValeur());
+        copie.setDateCollecte(LocalDateTime.now());
+        copie.setTypeDonnee(donneeEntrepot.getTypeDonnee());
+        copie.setPersonne(donneeEntrepot.getPersonne());
+        copie.setTraitement(traitement);
+
+        DonneePersonnelle saved = donneePersonnelleRepository.save(copie);
         traitementService.incrementerNombreDonnee(traitementId, 1L);
         return toResponse(saved);
     }
@@ -223,17 +245,47 @@ public class EntrepotService {
                 .orElseThrow(() -> new RuntimeException("Traitement introuvable : " + traitementId));
 
         List<DonneePersonnelleResponse> resultats = new ArrayList<>();
+        List<String> ignorees = new ArrayList<>();
         int count = 0;
+
         for (Long id : donneeIds) {
-            DonneePersonnelle donnee = donneePersonnelleRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Donnée introuvable : " + id));
-            if (donnee.getTraitement() == null) {
-                donnee.setTraitement(traitement);
-                resultats.add(toResponse(donneePersonnelleRepository.save(donnee)));
-                count++;
+            DonneePersonnelle donneeEntrepot = donneePersonnelleRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException(
+                            "Cette donnée n'existe pas (ou plus) dans l'entrepôt : " + id));
+
+            // Une donnée déjà rattachée ailleurs, ou déjà présente dans CE
+            // traitement, est simplement ignorée (pas d'erreur bloquante pour
+            // le reste du lot), mais on le signale clairement dans le résultat.
+            if (donneeEntrepot.getTraitement() != null) {
+                ignorees.add(nomType(donneeEntrepot) + " = " + donneeEntrepot.getValeur()
+                        + " (déjà rattachée à \"" + donneeEntrepot.getTraitement().getNom() + "\")");
+                continue;
             }
+            if (estDejaDansTraitement(donneeEntrepot, traitementId)) {
+                ignorees.add(nomType(donneeEntrepot) + " = " + donneeEntrepot.getValeur()
+                        + " (déjà présente dans ce traitement)");
+                continue;
+            }
+
+            DonneePersonnelle copie = new DonneePersonnelle();
+            copie.setValeur(donneeEntrepot.getValeur());
+            copie.setDateCollecte(LocalDateTime.now());
+            copie.setTypeDonnee(donneeEntrepot.getTypeDonnee());
+            copie.setPersonne(donneeEntrepot.getPersonne());
+            copie.setTraitement(traitement);
+
+            resultats.add(toResponse(donneePersonnelleRepository.save(copie)));
+            count++;
         }
+
         if (count > 0) traitementService.incrementerNombreDonnee(traitementId, (long) count);
+
+        if (resultats.isEmpty() && !ignorees.isEmpty()) {
+            throw new RuntimeException(
+                    "Aucune donnée n'a pu être rattachée (toutes déjà présentes) : "
+                    + String.join(" ; ", ignorees));
+        }
+
         return resultats;
     }
 
@@ -275,6 +327,23 @@ public class EntrepotService {
             && d.getPersonne() != null
             && d.getPersonne().getId().equals(personne.getId())
         );
+    }
+
+    private boolean estDejaDansTraitement(DonneePersonnelle donneeEntrepot, Long traitementId) {
+        if (donneeEntrepot.getPersonne() == null || donneeEntrepot.getTypeDonnee() == null) return false;
+        return donneePersonnelleRepository.findByTraitementId(traitementId).stream()
+                .anyMatch(d ->
+                    d.getTypeDonnee() != null
+                    && d.getTypeDonnee().getIdTypeDonnee().equals(donneeEntrepot.getTypeDonnee().getIdTypeDonnee())
+                    && d.getValeur() != null
+                    && d.getValeur().equalsIgnoreCase(donneeEntrepot.getValeur())
+                    && d.getPersonne() != null
+                    && d.getPersonne().getId().equals(donneeEntrepot.getPersonne().getId())
+                );
+    }
+
+    private String nomType(DonneePersonnelle d) {
+        return d.getTypeDonnee() != null ? d.getTypeDonnee().getNom() : "Donnée";
     }
 
     private Personne trouverOuCreerPersonne(String nom, String prenom,

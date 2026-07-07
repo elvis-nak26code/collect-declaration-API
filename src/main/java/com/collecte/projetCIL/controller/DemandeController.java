@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,8 +36,9 @@ public class DemandeController {
     @PreAuthorize("hasAnyAuthority('ROLE_USAGER','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<DemandeResponse> soumettreDemande(
             @RequestBody DemandeRequest request,
-            @AuthenticationPrincipal String email) {
+            @AuthenticationPrincipal UserDetails userDetails) {
 
+        String email = userDetails.getUsername();
         Usager usager = usagerRepository.findUsagerByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usager introuvable pour : " + email));
 
@@ -72,8 +74,8 @@ public class DemandeController {
     @PreAuthorize("hasAnyAuthority('ROLE_UTILISATEUR_METIER','ROLE_ADMINISTRATEUR')")
     public ResponseEntity<DemandeResponse> accepter(
             @PathVariable Long id,
-            @AuthenticationPrincipal String email) {
-        return ResponseEntity.ok(demandeService.accepterDemande(id, email));
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(demandeService.accepterDemande(id, userDetails.getUsername()));
     }
 
     @PutMapping("/{id}/rejeter")
@@ -81,8 +83,8 @@ public class DemandeController {
     public ResponseEntity<DemandeResponse> rejeter(
             @PathVariable Long id,
             @RequestBody Map<String, String> body,
-            @AuthenticationPrincipal String email) {
+            @AuthenticationPrincipal UserDetails userDetails) {
         String motif = body.getOrDefault("motifRejet", "Aucun motif fourni.");
-        return ResponseEntity.ok(demandeService.rejeterDemande(id, email, motif));
+        return ResponseEntity.ok(demandeService.rejeterDemande(id, userDetails.getUsername(), motif));
     }
 }

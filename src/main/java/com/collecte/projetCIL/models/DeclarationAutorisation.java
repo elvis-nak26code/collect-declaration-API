@@ -146,4 +146,10 @@ public class DeclarationAutorisation extends Declaration {
 
     @Column(name = "origine_donnees")
     private String origineDonnees;
+
+    @Column(name = "finalite_sante")
+    private String finaliteSante;
+
+    @Column(name = "pays_destination_transfert")
+    private String paysDestinationTransfert;
 }

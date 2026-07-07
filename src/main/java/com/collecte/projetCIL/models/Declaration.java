@@ -136,6 +136,21 @@ public class Declaration {
     @Column(name = "fonction_responsable")
     private String fonctionResponsable;
 
+    @Column(name = "service_responsable")
+    private String serviceResponsable;
+
+    @Column(name = "date_signature")
+    private LocalDate dateSignature;
+
+    @Column(name = "lieu_signature")
+    private String lieuSignature;
+
+    @Column(name = "pays_destination")
+    private String paysDestination;
+
+    @Column(name = "garanties_protection_etranger")
+    private String garantiesProtectionEtranger;
+
     // ── Nouveaux champs responsable (infos entreprise) ────────────────────
     @Column(name = "nom_raison_sociale")
     private String nomRaisonSociale;
