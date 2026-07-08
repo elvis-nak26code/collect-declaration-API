@@ -1,5 +1,6 @@
 package com.collecte.projetCIL.controller;
 
+import com.collecte.projetCIL.dto.request.EntrepotSaisieRequest;
 import com.collecte.projetCIL.dto.response.DonneePersonnelleResponse;
 import com.collecte.projetCIL.dto.response.ImportResultResponse;
 import com.collecte.projetCIL.service.EntrepotService;
@@ -50,6 +51,17 @@ public class EntrepotController {
             throw new RuntimeException("Format de fichier invalide : seuls les fichiers .xlsx sont acceptés.");
 
         return ResponseEntity.ok(entrepotService.importerDepuisExcel(fichier));
+    }
+
+    /**
+     * Saisie manuelle d'une donnée directement dans l'entrepôt (sans Excel).
+     * POST /api/entrepot/saisie-manuelle
+     */
+    @PostMapping("/saisie-manuelle")
+    @PreAuthorize("hasAnyAuthority('ROLE_UTILISATEUR_METIER','ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<DonneePersonnelleResponse> saisirManuellement(
+            @RequestBody EntrepotSaisieRequest request) {
+        return ResponseEntity.ok(entrepotService.saisirManuellement(request));
     }
 
     /**

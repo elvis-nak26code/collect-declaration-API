@@ -18,10 +18,10 @@ import com.collecte.projetCIL.dto.response.TraitementResponse;
 import com.collecte.projetCIL.enums.ModuleConserne;
 import com.collecte.projetCIL.enums.ResultatAction;
 import com.collecte.projetCIL.enums.StatutDeclaration;
+import com.collecte.projetCIL.enums.StatutSession;
 import com.collecte.projetCIL.enums.StatutTraitement;
 import com.collecte.projetCIL.enums.TypeAction;
 import com.collecte.projetCIL.enums.TypeNotification;
-import com.collecte.projetCIL.models.Administrateur;
 import com.collecte.projetCIL.models.DPO;
 import com.collecte.projetCIL.models.Declaration;
 import com.collecte.projetCIL.models.DeclarationAutorisation;
@@ -77,6 +77,19 @@ public class TraitementService {
     //  HELPERS PRIVÉS
     // ------------------------------------------------------------------ //
 
+    /**
+     * Vérifie qu'une session de collecte est encore active (EN_COURS).
+     * Une fois qu'une session est marquée TERMINEE par le DPO, plus aucun
+     * nouveau traitement ne peut y être ajouté ou rattaché.
+     */
+    private void verifierSessionActive(SessionCollecte session) {
+        if (session != null && session.getStatutSession() == StatutSession.TERMINEE) {
+            throw new RuntimeException(
+                    "Impossible d'ajouter un traitement à la session « " + session.getNomSession()
+                    + " » : cette session est déjà terminée.");
+        }
+    }
+
     /** Crée et sauvegarde l'entité Traitement à partir des champs communs.
      *  La session de collecte est désormais optionnelle. */
     private Traitement buildAndSaveTraitement(TraitementRequest request) {
@@ -84,6 +97,7 @@ public class TraitementService {
         if (request.getSessionCollecteId() != null) {
             session = sessionCollecteRepository.findById(request.getSessionCollecteId())
                     .orElseThrow(() -> new RuntimeException("Session introuvable : " + request.getSessionCollecteId()));
+            verifierSessionActive(session);
         }
 
         UtilisateurMetier utilisateurMetier = utilisateurMetierRepository.findById(request.getUtilisateurMetierId())
@@ -406,6 +420,7 @@ public class TraitementService {
 
         SessionCollecte session = sessionCollecteRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session introuvable : " + sessionId));
+        verifierSessionActive(session);
 
         traitement.setSessionCollecte(session);
         traitementRepository.save(traitement);
@@ -561,12 +576,19 @@ public class TraitementService {
                 ? t.getUtilisateurMetier().getPrenom() + " " + t.getUtilisateurMetier().getNom()
                 : null;
 
-        Long declId = declarationId;
-        if (declId == null) {
-            declId = findDeclarationByTraitementId(t.getIdTraitement())
-                    .map(Declaration::getIdDeclaration)
-                    .orElse(null);
-        }
+        // On récupère la déclaration une seule fois : elle sert à la fois à
+        // déterminer l'ID (si non fourni) et le statut "déclaré / non déclaré".
+        Optional<Declaration> declarationOpt = findDeclarationByTraitementId(t.getIdTraitement());
+
+        Long declId = declarationId != null
+                ? declarationId
+                : declarationOpt.map(Declaration::getIdDeclaration).orElse(null);
+
+        // Un traitement est "déclaré" s'il possède une déclaration dont la
+        // soumission a déjà eu lieu (statut différent de BROUILLON).
+        boolean isDeclare = declarationOpt
+                .map(d -> d.getStatut() != StatutDeclaration.BROUILLON)
+                .orElse(false);
 
         return new TraitementResponse(
                 t.getIdTraitement(),
@@ -585,7 +607,8 @@ public class TraitementService {
                 declId,
                 t.getStatut(),
                 t.getEnvoyeAuDpo(),
-                t.getDateEnvoiDpo()
+                t.getDateEnvoiDpo(),
+                isDeclare
         );
     }
 
@@ -604,20 +627,24 @@ public class TraitementService {
     // ------------------------------------------------------------------ //
     //  Lister tous les traitements (dashboard DPO global)
     //  -> uniquement ceux envoyés au DPO
+    //  -> filtre optionnel "declare" : true = déclarés uniquement,
+    //     false = non déclarés uniquement, null = pas de filtre
     // ------------------------------------------------------------------ //
-    public List<TraitementResponse> listerTous() {
+    public List<TraitementResponse> listerTous(Boolean declare) {
         return traitementRepository.findAll()
                 .stream()
                 .filter(t -> Boolean.TRUE.equals(t.getEnvoyeAuDpo()))
                 .map(t -> toResponse(t, null))
+                .filter(r -> declare == null || declare.equals(r.getDeclare()))
                 .collect(Collectors.toList());
     }
 
     // ------------------------------------------------------------------ //
     //  Lister les traitements des sessions d'un DPO spécifique
     //  -> uniquement ceux envoyés au DPO
+    //  -> filtre optionnel "declare" (voir listerTous)
     // ------------------------------------------------------------------ //
-    public List<TraitementResponse> listerParDpo(Long dpoId) {
+    public List<TraitementResponse> listerParDpo(Long dpoId, Boolean declare) {
         return traitementRepository.findAll()
                 .stream()
                 .filter(t -> Boolean.TRUE.equals(t.getEnvoyeAuDpo()))
@@ -630,6 +657,7 @@ public class TraitementService {
                                 .orElse(false)
                 )
                 .map(t -> toResponse(t, null))
+                .filter(r -> declare == null || declare.equals(r.getDeclare()))
                 .collect(Collectors.toList());
     }
 }

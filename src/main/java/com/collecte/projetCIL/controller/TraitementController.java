@@ -198,17 +198,22 @@ public class TraitementController {
     }
 
     // GET /api/traitements — tous les traitements envoyés au DPO (DPO / Admin)
+    // Filtre optionnel ?declare=true|false pour distinguer déclarés / non déclarés
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
-    public ResponseEntity<List<TraitementResponse>> listerTous() {
-        return ResponseEntity.ok(traitementService.listerTous());
+    public ResponseEntity<List<TraitementResponse>> listerTous(
+            @RequestParam(required = false) Boolean declare) {
+        return ResponseEntity.ok(traitementService.listerTous(declare));
     }
 
     // GET /api/traitements/dpo/{dpoId} — traitements envoyés au DPO donné
+    // Filtre optionnel ?declare=true|false pour distinguer déclarés / non déclarés
     @GetMapping("/dpo/{dpoId}")
     @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
-    public ResponseEntity<List<TraitementResponse>> listerParDpo(@PathVariable Long dpoId) {
-        return ResponseEntity.ok(traitementService.listerParDpo(dpoId));
+    public ResponseEntity<List<TraitementResponse>> listerParDpo(
+            @PathVariable Long dpoId,
+            @RequestParam(required = false) Boolean declare) {
+        return ResponseEntity.ok(traitementService.listerParDpo(dpoId, declare));
     }
 
 }

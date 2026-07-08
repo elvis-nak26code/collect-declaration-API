@@ -1,5 +1,6 @@
 package com.collecte.projetCIL.service;
 
+import com.collecte.projetCIL.dto.request.EntrepotSaisieRequest;
 import com.collecte.projetCIL.dto.response.DonneePersonnelleResponse;
 import com.collecte.projetCIL.dto.response.ImportResultResponse;
 import com.collecte.projetCIL.models.DonneePersonnelle;
@@ -45,6 +46,51 @@ public class EntrepotService {
     private final TypeDonneeRepository typeDonneeRepository;
     private final TraitementRepository traitementRepository;
     private final TraitementService traitementService;
+
+    // ─── Saisie manuelle ──────────────────────────────────────────────────────
+
+    /**
+     * Ajoute une donnée directement dans l'entrepôt (traitement = null),
+     * via saisie manuelle (formulaire), sans passer par un fichier Excel.
+     * Même logique anti-doublon et de dédoublonnage de personne que l'import.
+     */
+    public DonneePersonnelleResponse saisirManuellement(EntrepotSaisieRequest request) {
+
+        if (request.getNom() == null || request.getNom().isBlank())
+            throw new RuntimeException("Le nom est obligatoire.");
+        if (request.getPrenom() == null || request.getPrenom().isBlank())
+            throw new RuntimeException("Le prénom est obligatoire.");
+        if (request.getTypeDonneeId() == null)
+            throw new RuntimeException("Le type de donnée est obligatoire.");
+        if (request.getValeur() == null || request.getValeur().isBlank())
+            throw new RuntimeException("La valeur est obligatoire.");
+
+        TypeDonnee typeDonnee = typeDonneeRepository.findById(request.getTypeDonneeId())
+                .orElseThrow(() -> new RuntimeException("TypeDonnee introuvable : " + request.getTypeDonneeId()));
+
+        Personne personne = trouverOuCreerPersonne(
+                request.getNom().trim(), request.getPrenom().trim(),
+                request.getEmail(), request.getTelephone());
+
+        List<DonneePersonnelle> entrepotActuel = donneePersonnelleRepository.findEntrepot();
+        String valeur = request.getValeur().trim();
+
+        if (estDoublonEntrepot(personne, typeDonnee, valeur, entrepotActuel)) {
+            throw new RuntimeException(
+                    "Doublon détecté : cette donnée (" + typeDonnee.getNom() + " = " + valeur
+                    + ") existe déjà dans l'entrepôt pour cette personne.");
+        }
+
+        DonneePersonnelle donnee = new DonneePersonnelle();
+        donnee.setValeur(valeur);
+        donnee.setDateCollecte(LocalDateTime.now());
+        donnee.setPersonne(personne);
+        donnee.setTypeDonnee(typeDonnee);
+        donnee.setTraitement(null);
+
+        DonneePersonnelle saved = donneePersonnelleRepository.save(donnee);
+        return toResponse(saved);
+    }
 
     // ─── Import Excel ─────────────────────────────────────────────────────────
 

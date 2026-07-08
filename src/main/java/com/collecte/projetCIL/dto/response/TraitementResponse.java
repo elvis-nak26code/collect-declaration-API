@@ -30,4 +30,13 @@ public class TraitementResponse {
     private StatutTraitement statut;
     private Boolean envoyeAuDpo;
     private LocalDateTime dateEnvoiDpo;
+
+    /**
+     * Champ calculé (non persisté) : indique si ce traitement est "déclaré",
+     * c'est-à-dire s'il possède une Declaration dont la soumission a déjà
+     * été effectuée (statut différent de BROUILLON). Un traitement sans
+     * déclaration, ou avec une déclaration encore en BROUILLON, est
+     * considéré comme "non déclaré".
+     */
+    private Boolean declare;
 }
