@@ -46,6 +46,7 @@ public class EntrepotService {
     private final TypeDonneeRepository typeDonneeRepository;
     private final TraitementRepository traitementRepository;
     private final TraitementService traitementService;
+    private final CollecteNotificationService collecteNotificationService;
 
     // ─── Saisie manuelle ──────────────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ public class EntrepotService {
         donnee.setTraitement(null);
 
         DonneePersonnelle saved = donneePersonnelleRepository.save(donnee);
+        collecteNotificationService.notifierCollecte(personne);
         return toResponse(saved);
     }
 
@@ -168,6 +170,7 @@ public class EntrepotService {
 
                         if (count == 0) throw new Exception("Aucune donnée valide (doublons exclus ou champs vides)");
                         lignesImportees += count;
+                        collecteNotificationService.notifierCollecte(personne);
 
                     } else {
                         // ── Format B : nom | prenom | email | telephone | type_donnee | valeur ──
@@ -214,6 +217,7 @@ public class EntrepotService {
                             DonneePersonnelle saved = donneePersonnelleRepository.save(donnee);
                             entrepotActuel.add(saved); // mise à jour du cache local
                             lignesImportees++;
+                            collecteNotificationService.notifierCollecte(personne);
                         }
                     }
 

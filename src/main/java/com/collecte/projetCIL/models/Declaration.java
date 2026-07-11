@@ -206,6 +206,11 @@ public class Declaration {
     @JoinColumn(name = "cil_id")
     private CIL cil;
 
+    /** Renseigné uniquement si la vérification a été faite par le système externe de la CIL (clé API, pas de login). Jamais les deux (cil / cleApiCil) en même temps. */
+    @ManyToOne
+    @JoinColumn(name = "cle_api_cil_id")
+    private CleApiCil cleApiCil;
+
     @OneToMany(mappedBy = "declaration", cascade = CascadeType.ALL)
     private List<HistoriqueDeclaration> historiques;
 }

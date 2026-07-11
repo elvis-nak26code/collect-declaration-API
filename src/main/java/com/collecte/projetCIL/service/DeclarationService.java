@@ -12,6 +12,7 @@ import com.collecte.projetCIL.dto.request.DeclarationCollecteSiteInternetRequest
 import com.collecte.projetCIL.dto.request.DeclarationNormaleRequest;
 import com.collecte.projetCIL.dto.request.DeclarationVideoSurveillanceRequest;
 import com.collecte.projetCIL.dto.response.DeclarationResponse;
+import com.collecte.projetCIL.dto.response.HistoriqueDeclarationResponse;
 import com.collecte.projetCIL.enums.ModuleConserne;
 import com.collecte.projetCIL.enums.NatureDemande;
 import com.collecte.projetCIL.enums.ResultatAction;
@@ -26,6 +27,8 @@ import com.collecte.projetCIL.models.DeclarationAutorisation;
 import com.collecte.projetCIL.models.DeclarationCollecteSiteInternet;
 import com.collecte.projetCIL.models.DeclarationNormale;
 import com.collecte.projetCIL.models.DeclarationSystemeVideoSurveillance;
+import com.collecte.projetCIL.models.HistoriqueDeclaration;
+import com.collecte.projetCIL.models.CleApiCil;
 import com.collecte.projetCIL.models.Traitement;
 import com.collecte.projetCIL.repository.AdministrateurRepository;
 import com.collecte.projetCIL.repository.CILRepository;
@@ -36,6 +39,7 @@ import com.collecte.projetCIL.repository.DeclarationCollecteSiteInternetReposito
 import com.collecte.projetCIL.repository.DeclarationNormaleRepository;
 import com.collecte.projetCIL.repository.DeclarationRepository;
 import com.collecte.projetCIL.repository.DeclarationSystemeVideoSurveillanceRepository;
+import com.collecte.projetCIL.repository.HistoriqueDeclarationRepository;
 import com.collecte.projetCIL.repository.TraitementRepository;
 import com.collecte.projetCIL.repository.UtilisateurMetierRepository;
 
@@ -51,6 +55,7 @@ public class DeclarationService {
     private final DeclarationAutorisationRepository          autorisationRepo;
     private final DeclarationRepository                      declarationRepo;
     private final TraitementRepository                       traitementRepo;
+    private final HistoriqueDeclarationRepository             historiqueDeclarationRepo;
     private final DPORepository                              dpoRepo;
     private final AdministrateurRepository                   administrateurRepo;
     private final DGRepository                               dgRepo;
@@ -357,6 +362,7 @@ public class DeclarationService {
         Declaration saved = declarationRepo.save(d);
 
         journalAuditService.enregistrer(dpo, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+        enregistrerHistorique(saved);
 
         dgRepo.findAll().stream().findFirst().ifPresent(dg ->
                 notificationService.envoyer(dg, TypeNotification.ALERTE,
@@ -380,6 +386,19 @@ public class DeclarationService {
     public List<DeclarationResponse> listerEnAttente() {
         return declarationRepo.findEnAttenteAvecDpo().stream()
                 .map(d -> toResponse(d, detecterType(d), null))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Historique persisté (table historique_declaration) d'un DPO donné.
+     * Contrairement à listerParDpo() (qui renvoie l'état courant des déclarations),
+     * ceci renvoie chaque événement du cycle de vie (création, soumission,
+     * validation/rejet DG, validation/rejet CIL), conservé en base pour
+     * une consultation fiable côté DPO, y compris après rafraîchissement.
+     */
+    public List<HistoriqueDeclarationResponse> listerHistoriqueParDpo(Long dpoId) {
+        return historiqueDeclarationRepo.findByDpoId(dpoId).stream()
+                .map(this::toHistoriqueResponse)
                 .collect(Collectors.toList());
     }
 
@@ -418,6 +437,7 @@ public class DeclarationService {
         Declaration saved = declarationRepo.save(d);
 
         journalAuditService.enregistrer(dg, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+        enregistrerHistorique(saved);
 
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.CONFIRMATION,
@@ -443,6 +463,7 @@ public class DeclarationService {
         Declaration saved = declarationRepo.save(d);
 
         journalAuditService.enregistrer(dg, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+        enregistrerHistorique(saved);
 
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.ALERTE,
@@ -469,6 +490,7 @@ public class DeclarationService {
         Declaration saved = declarationRepo.save(d);
 
         journalAuditService.enregistrer(cil, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+        enregistrerHistorique(saved);
 
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.CONFIRMATION,
@@ -491,6 +513,7 @@ public class DeclarationService {
         Declaration saved = declarationRepo.save(d);
 
         journalAuditService.enregistrer(cil, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+        enregistrerHistorique(saved);
 
         if (d.getDpo() != null) {
             notificationService.envoyer(d.getDpo(), TypeNotification.ALERTE,
@@ -499,6 +522,60 @@ public class DeclarationService {
         }
 
         return toResponse(saved, detecterType(saved), null);
+    }
+
+    // ================================================================== //
+    //  CIL EXTERNE (clé API — pas de login, aucune fiche CIL en base)
+    // ================================================================== //
+
+    @Transactional
+    public DeclarationResponse validerConformiteCilExterne(Long declarationId, CleApiCil cle) {
+        Declaration d = declarationRepo.findById(declarationId)
+                .orElseThrow(() -> new RuntimeException("Déclaration introuvable : " + declarationId));
+
+        d.setStatut(StatutDeclaration.VALIDEE_CIL);
+        d.setCleApiCil(cle);
+        Declaration saved = declarationRepo.save(d);
+
+        journalAuditService.enregistrer(null, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+        enregistrerHistorique(saved);
+
+        if (d.getDpo() != null) {
+            notificationService.envoyer(d.getDpo(), TypeNotification.CONFIRMATION,
+                    "Votre déclaration #" + declarationId + " a été validée conforme par la CIL ("
+                    + cle.getLibelle() + "). Le processus est terminé.");
+        }
+
+        return toResponse(saved, detecterType(saved), null);
+    }
+
+    @Transactional
+    public DeclarationResponse rejeterConformiteCilExterne(Long declarationId, CleApiCil cle, String commentaire) {
+        Declaration d = declarationRepo.findById(declarationId)
+                .orElseThrow(() -> new RuntimeException("Déclaration introuvable : " + declarationId));
+
+        d.setStatut(StatutDeclaration.REJETEE_CIL);
+        d.setCleApiCil(cle);
+        Declaration saved = declarationRepo.save(d);
+
+        journalAuditService.enregistrer(null, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+        enregistrerHistorique(saved);
+
+        if (d.getDpo() != null) {
+            notificationService.envoyer(d.getDpo(), TypeNotification.ALERTE,
+                    "Votre déclaration #" + declarationId + " a été jugée non conforme par la CIL ("
+                    + cle.getLibelle() + "). Motif : " + commentaire
+                    + " — Veuillez corriger et soumettre à nouveau.");
+        }
+
+        return toResponse(saved, detecterType(saved), null);
+    }
+
+    /** Déclarations déjà traitées par un partenaire externe (identifié par sa clé API). */
+    public List<HistoriqueDeclarationResponse> listerHistoriqueParCleApi(Long cleApiCilId) {
+        return historiqueDeclarationRepo.findByCleApiCilId(cleApiCilId).stream()
+                .map(this::toHistoriqueResponse)
+                .collect(Collectors.toList());
     }
 
     // ================================================================== //
@@ -713,8 +790,56 @@ public class DeclarationService {
     // ================================================================== //
     //  HELPERS PRIVÉS
     // ================================================================== //
+    /**
+     * Persiste un événement d'historique pour la déclaration donnée, avec son
+     * statut ACTUEL au moment de l'appel. À appeler juste après chaque
+     * changement de statut sauvegardé en base (creerDeclaration*, soumettre,
+     * validerDeclaration, rejeterDeclaration, validerConformiteCil, rejeterConformiteCil).
+     */
+    private void enregistrerHistorique(Declaration d) {
+        HistoriqueDeclaration h = new HistoriqueDeclaration();
+        h.setDateDeclaration(LocalDate.now());
+        h.setResponsableDeclaration(
+                d.getResponsableDeclaration() != null
+                        ? d.getResponsableDeclaration()
+                        : (d.getDpo() != null ? d.getDpo().getPrenom() + " " + d.getDpo().getNom() : "N/A"));
+        h.setStatut(d.getStatut());
+        h.setDeclaration(d);
+        historiqueDeclarationRepo.save(h);
+    }
+
+    private HistoriqueDeclarationResponse toHistoriqueResponse(HistoriqueDeclaration h) {
+        HistoriqueDeclarationResponse r = new HistoriqueDeclarationResponse();
+        r.setIdHistorique(h.getIdHistorique());
+        r.setDateDeclaration(h.getDateDeclaration());
+        r.setResponsableDeclaration(h.getResponsableDeclaration());
+        r.setStatut(h.getStatut());
+
+        Declaration d = h.getDeclaration();
+        if (d != null) {
+            r.setIdDeclaration(d.getIdDeclaration());
+            r.setTypeDeclaration(detecterType(d));
+            r.setIntitule(extraireIntitule(d));
+            if (d.getTraitement() != null) {
+                r.setTraitementId(d.getTraitement().getIdTraitement());
+                r.setTraitementNom(d.getTraitement().getNom());
+            }
+        }
+        return r;
+    }
+
+    /** Extrait un intitulé lisible selon le sous-type concret de la déclaration. */
+    private String extraireIntitule(Declaration d) {
+        if (d instanceof DeclarationNormale dn) return dn.getDenominationTraitement();
+        if (d instanceof DeclarationCollecteSiteInternet dc) return dc.getDenominationTraitement();
+        if (d instanceof DeclarationAutorisation da) return da.getDenominationTraitement();
+        if (d instanceof DeclarationSystemeVideoSurveillance dv) return dv.getFinalites();
+        return null;
+    }
+
     private void postCreation(DPO dpo, Traitement trt, Declaration saved, String type) {
         journalAuditService.enregistrer(dpo, TypeAction.CREATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
+        enregistrerHistorique(saved);
 
         dgRepo.findAll().stream().findFirst().ifPresent(dg ->
                 notificationService.envoyer(dg, TypeNotification.ALERTE,

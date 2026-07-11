@@ -35,6 +35,7 @@ public class DonneePersonnelleService {
     private final TypeDonneeRepository typeDonneeRepository;
     private final TraitementRepository traitementRepository;
     private final TraitementService traitementService;
+    private final CollecteNotificationService collecteNotificationService;
 
     // ─────────────────────────────────────────────────────────────────────────
     //  AJOUT MANUEL — copie aussi dans l'entrepôt + anti-doublon
@@ -92,6 +93,10 @@ public class DonneePersonnelleService {
 
         DonneePersonnelle saved = donneePersonnelleRepository.save(donnee);
         traitementService.incrementerNombreDonnee(request.getTraitementId(), 1L);
+
+        if (personne != null) {
+            collecteNotificationService.notifierCollecte(personne);
+        }
 
         // ── Copie dans l'entrepôt (traitement = null) ────────────────────────
         // Uniquement si une personne est connue et si la valeur n'existe pas déjà dans l'entrepôt
@@ -200,6 +205,7 @@ public class DonneePersonnelleService {
 
                         if (count == 0) throw new Exception("Aucune donnée valide sur cette ligne");
                         lignesImportees += count;
+                        collecteNotificationService.notifierCollecte(personne);
 
                     } else {
                         // Ancien format : valeur / date / usagerId / typeDonneeId
@@ -236,6 +242,7 @@ public class DonneePersonnelleService {
                             donnee.setTraitement(traitement);
                             donneePersonnelleRepository.save(donnee);
                             lignesImportees++;
+                            if (p != null) collecteNotificationService.notifierCollecte(p);
                         } else {
                             erreurs.add("Ligne " + (i + 1) + " : doublon ignoré (" + typeDonnee.getNom() + " = " + valeur + ")");
                         }

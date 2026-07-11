@@ -43,6 +43,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.collecte.projetCIL.security.CilApiKeyAuthFilter;
 import com.collecte.projetCIL.security.CustomUserDetailsService;
 import com.collecte.projetCIL.security.JwtAuthFilter;
 
@@ -55,6 +56,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final CilApiKeyAuthFilter cilApiKeyAuthFilter;
     private final CustomUserDetailsService userDetailsService;
 
     @Bean
@@ -106,12 +108,15 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/mot-de-passe-oublie").permitAll()
                 .requestMatchers("/api/auth/reinitialiser-mot-de-passe").permitAll()
                 // .requestMatchers("/api/notifications/stream/**").permitAll()
+                // Routes CIL externes — pas de login/JWT, authentifiées par clé API (header X-API-KEY)
+                .requestMatchers("/api/cil-externe/**").hasAuthority("ROLE_CIL_API")
                 // Endpoints admin uniquement
                 .requestMatchers("/api/admin/**").hasRole("ADMINISTRATEUR")
                 // Tout le reste : authentifié
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
+            .addFilterBefore(cilApiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

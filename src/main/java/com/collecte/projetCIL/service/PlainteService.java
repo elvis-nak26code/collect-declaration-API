@@ -8,6 +8,7 @@ import com.collecte.projetCIL.enums.StatutPlainte;
 import com.collecte.projetCIL.enums.TypeAction;
 import com.collecte.projetCIL.enums.TypeNotification;
 import com.collecte.projetCIL.models.CIL;
+import com.collecte.projetCIL.models.CleApiCil;
 import com.collecte.projetCIL.models.DPO;
 import com.collecte.projetCIL.models.Plainte;
 import com.collecte.projetCIL.repository.CILRepository;
@@ -80,6 +81,42 @@ public class PlainteService {
     /** Plaintes émises par une CIL. */
     public List<PlainteResponse> listerParCil(Long cilId) {
         return plainteRepository.findByCilId(cilId)
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    // ------------------------------------------------------------------ //
+    //  CIL EXTERNE (clé API — pas de login, aucune fiche CIL en base)      //
+    // ------------------------------------------------------------------ //
+    @Transactional
+    public PlainteResponse envoyerPlainteCilVersDpoExterne(PlainteRequest req, CleApiCil cle) {
+
+        DPO dpo = dpoRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("Aucun DPO trouvé dans le système."));
+
+        Plainte plainte = new Plainte();
+        plainte.setDatePlainte(LocalDate.now());
+        plainte.setLieu(req.getLieu());
+        plainte.setObjetPlainte(req.getObjetPlainte());
+        plainte.setDescriptionPlainte(req.getDescriptionPlainte());
+        plainte.setStatutPlainte(StatutPlainte.RECUE);
+        plainte.setCleApiCil(cle);
+        plainte.setDpo(dpo);
+
+        Plainte saved = plainteRepository.save(plainte);
+
+        String msg = "La CIL (" + cle.getLibelle() + ")"
+                + " vous a transmis une plainte : « " + req.getObjetPlainte()
+                + " » (Plainte #" + saved.getIdPlainte() + ")";
+        notificationService.envoyer(dpo, TypeNotification.PLAINTE, msg);
+
+        journalAuditService.enregistrer(null, TypeAction.CREATION, ModuleConserne.PLAINTE, ResultatAction.SUCCES);
+
+        return toResponse(saved);
+    }
+
+    /** Plaintes émises via le système externe de la CIL (clé API). */
+    public List<PlainteResponse> listerParCleApi(Long cleApiCilId) {
+        return plainteRepository.findByCleApiCilId(cleApiCilId)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 

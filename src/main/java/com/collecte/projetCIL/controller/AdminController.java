@@ -19,9 +19,11 @@ import com.collecte.projetCIL.dto.response.UtilisateurResponse;
 import com.collecte.projetCIL.enums.StatutDemandeAcces;
 import com.collecte.projetCIL.enums.StatutUtilisateur;
 import com.collecte.projetCIL.service.AdminProfilService;
+import com.collecte.projetCIL.service.CleApiCilService;
 import com.collecte.projetCIL.service.DemandeAccesService;
 import com.collecte.projetCIL.service.JournalAuditService;
 import com.collecte.projetCIL.service.UtilisateurService;
+import com.collecte.projetCIL.dto.response.CleApiCilResponse;
 
 import lombok.RequiredArgsConstructor;
 
@@ -49,6 +51,12 @@ import lombok.RequiredArgsConstructor;
  * ── Profil admin ──────────────────────────────────────────────────────
  * PUT    /api/admin/profil                        → modifier nom/prénom
  * PUT    /api/admin/mot-de-passe                  → changer le mot de passe
+ *
+ * ── Clés API CIL (accès externe sans login) ───────────────────────────
+ * POST   /api/admin/cil-externe/cle-api                    → créer une clé (fiche CIL auto-créée), affichée UNE fois
+ * GET    /api/admin/cil-externe/cles                        → lister toutes les clés (sans la clé en clair)
+ * POST   /api/admin/cil-externe/cle-api/{cleId}/regenerer   → régénérer la clé d'un partenaire existant
+ * DELETE /api/admin/cil-externe/cle-api/{cleId}             → révoquer une clé
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -60,6 +68,7 @@ public class AdminController {
     private final UtilisateurService   utilisateurService;
     private final JournalAuditService  journalAuditService;
     private final AdminProfilService   adminProfilService;
+    private final CleApiCilService     cleApiCilService;
 
     // ================================================================== //
     //  DEMANDES D'ACCÈS
@@ -203,5 +212,49 @@ public class AdminController {
             Authentication authentication,
             @RequestBody AdminMotDePasseRequest req) {
         return ResponseEntity.ok(adminProfilService.changerMotDePasse(authentication.getName(), req));
+    }
+
+    // ================================================================== //
+    //  CLÉS API CIL (accès externe sans login, voir CilApiKeyAuthFilter)
+    // ================================================================== //
+
+    /**
+     * Crée une nouvelle clé API prête à l'emploi. Aucune fiche CIL n'a
+     * besoin d'exister au préalable — elle est créée automatiquement en
+     * interne. La clé en clair n'est renvoyée qu'ICI, une seule fois —
+     * ensuite irrécupérable (seule son empreinte est stockée).
+     * À communiquer immédiatement à la CIL.
+     */
+    @PostMapping("/cil-externe/cle-api")
+    public ResponseEntity<Map<String, String>> genererCleApi(@RequestBody(required = false) Map<String, String> body) {
+        String libelle = body != null ? body.get("libelle") : null;
+        String cleEnClair = cleApiCilService.genererCle(libelle);
+        return ResponseEntity.ok(Map.of(
+                "cle", cleEnClair,
+                "avertissement", "Cette clé ne sera plus jamais affichée. Copiez-la et transmettez-la à la CIL maintenant."
+        ));
+    }
+
+    /** Liste toutes les clés API CIL émises (sans jamais exposer la clé en clair). */
+    @GetMapping("/cil-externe/cles")
+    public ResponseEntity<List<CleApiCilResponse>> listerClesApi() {
+        return ResponseEntity.ok(cleApiCilService.listerToutes());
+    }
+
+    /** Régénère la clé d'un partenaire déjà existant (nouvelle clé, ancienne désactivée). */
+    @PostMapping("/cil-externe/cle-api/{cleId}/regenerer")
+    public ResponseEntity<Map<String, String>> regenererCleApi(@PathVariable Long cleId) {
+        String cleEnClair = cleApiCilService.regenererCle(cleId);
+        return ResponseEntity.ok(Map.of(
+                "cle", cleEnClair,
+                "avertissement", "Cette clé ne sera plus jamais affichée. Copiez-la et transmettez-la à la CIL maintenant."
+        ));
+    }
+
+    /** Révoque une clé (elle cesse immédiatement de fonctionner). */
+    @DeleteMapping("/cil-externe/cle-api/{cleId}")
+    public ResponseEntity<MessageResponse> revoquerCleApi(@PathVariable Long cleId) {
+        cleApiCilService.revoquerCle(cleId);
+        return ResponseEntity.ok(new MessageResponse("Clé API révoquée avec succès."));
     }
 }

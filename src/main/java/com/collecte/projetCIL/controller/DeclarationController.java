@@ -22,6 +22,7 @@ import com.collecte.projetCIL.dto.request.DeclarationCollecteSiteInternetRequest
 import com.collecte.projetCIL.dto.request.DeclarationNormaleRequest;
 import com.collecte.projetCIL.dto.request.DeclarationVideoSurveillanceRequest;
 import com.collecte.projetCIL.dto.response.DeclarationResponse;
+import com.collecte.projetCIL.dto.response.HistoriqueDeclarationResponse;
 import com.collecte.projetCIL.service.DeclarationService;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ import lombok.RequiredArgsConstructor;
  *
  * ── Consultation ──────────────────────────────────────────────────────────
  * GET    /api/declarations/mes-declarations?dpoId=     (DPO)
+ * GET    /api/declarations/historique-dpo?dpoId=        (DPO) — historique persisté
  * GET    /api/declarations/en-attente                   (DG)
  * GET    /api/declarations/pour-cil                     (CIL)
  * GET    /api/declarations/{id}                         (DPO, DG, CIL)
@@ -158,6 +160,17 @@ public class DeclarationController {
     @PreAuthorize("hasAuthority('ROLE_DPO')")
     public ResponseEntity<List<DeclarationResponse>> mesDeclarations(@RequestParam Long dpoId) {
         return ResponseEntity.ok(declarationService.listerParDpo(dpoId));
+    }
+
+    /**
+     * DPO : historique persisté de toutes ses déclarations (création, soumission,
+     * validation/rejet DG, validation/rejet CIL), conservé en base — reste
+     * disponible après rafraîchissement de la page ou reconnexion.
+     */
+    @GetMapping("/historique-dpo")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<List<HistoriqueDeclarationResponse>> historiqueDpo(@RequestParam Long dpoId) {
+        return ResponseEntity.ok(declarationService.listerHistoriqueParDpo(dpoId));
     }
 
     /** DG : historique complet de toutes les déclarations traitées (hors brouillons). */

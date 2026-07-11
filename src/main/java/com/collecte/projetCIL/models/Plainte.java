@@ -1,12 +1,22 @@
 package com.collecte.projetCIL.models;
 
+import java.time.LocalDate;
+
 import com.collecte.projetCIL.enums.StatutPlainte;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.time.LocalDate;
 
 @Entity
 @Table(name = "plainte")
@@ -56,6 +66,11 @@ public class Plainte {
     @ManyToOne
     @JoinColumn(name = "cil_id", nullable = true)
     private CIL cil;
+
+    /** Renseigné uniquement si la plainte vient du système externe de la CIL (clé API, pas de login). */
+    @ManyToOne
+    @JoinColumn(name = "cle_api_cil_id")
+    private CleApiCil cleApiCil;
 
     // DPO destinataire de la plainte émise par la CIL
     @ManyToOne

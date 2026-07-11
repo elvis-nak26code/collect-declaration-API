@@ -20,9 +20,11 @@ import lombok.RequiredArgsConstructor;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final EmailService emailService;
 
     // ------------------------------------------------------------------ //
     //  Créer et persister une notification (usage interne)
+    //  + envoi automatique d'un email au destinataire (si email connu)
     // ------------------------------------------------------------------ //
     public void envoyer(Utilisateur destinataire, TypeNotification type, String contenu) {
         Notification notif = new Notification();
@@ -32,6 +34,34 @@ public class NotificationService {
         notif.setStatut(StatutNotification.NON_LUE);
         notif.setUtilisateur(destinataire);
         notificationRepository.save(notif);
+
+        envoyerEmailNotification(destinataire, type, contenu);
+    }
+
+    /**
+     * Traduit une notification en email. Ne bloque jamais le flux appelant :
+     * une erreur d'envoi est uniquement journalisée par EmailService (mode fallback).
+     */
+    private void envoyerEmailNotification(Utilisateur destinataire, TypeNotification type, String contenu) {
+        if (destinataire == null || destinataire.getEmail() == null || destinataire.getEmail().isBlank()) {
+            return;
+        }
+        String sujet = switch (type) {
+            case ALERTE                 -> "Alerte — action requise";
+            case RAPPEL                 -> "Rappel";
+            case CONFIRMATION           -> "Confirmation";
+            case RELANCE                -> "Relance";
+            case DEMANDE_MODIFICATION   -> "Demande de modification de vos données";
+            case DEMANDE_SUPPRESSION    -> "Demande de suppression de vos données";
+            case PLAINTE                -> "Suivi de votre plainte";
+        };
+        String prenomNom = ((destinataire.getPrenom() != null ? destinataire.getPrenom() : "")
+                + " " + (destinataire.getNom() != null ? destinataire.getNom() : "")).trim();
+        String corps = "Bonjour " + (prenomNom.isBlank() ? "" : prenomNom) + ",\n\n"
+                + contenu + "\n\n"
+                + "Vous pouvez consulter le détail de cette notification depuis votre espace.\n\n"
+                + "Ceci est un message automatique, merci de ne pas y répondre directement.";
+        emailService.envoyer(destinataire.getEmail(), sujet, corps);
     }
 
     // ------------------------------------------------------------------ //
