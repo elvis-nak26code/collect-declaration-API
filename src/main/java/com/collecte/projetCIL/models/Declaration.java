@@ -37,6 +37,10 @@ public class Declaration {
     @Column(name = "id_declaration")
     private Long idDeclaration;
 
+    /** Motif renseigné par la CIL lors du dernier rejet de conformité (null si jamais rejetée, ou remis à zéro après correction+renvoi). */
+    @Column(name = "motif_rejet_cil", columnDefinition = "TEXT")
+    private String motifRejetCil;
+
     @Column(name = "date_soumission")
     private LocalDate dateSoumission;
 

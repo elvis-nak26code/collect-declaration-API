@@ -358,6 +358,7 @@ public class DeclarationService {
 
         d.setStatut(StatutDeclaration.EN_ATTENTE);
         d.setDateSoumission(LocalDate.now());
+        d.setMotifRejetCil(null);
         if (d.getDpo() == null) d.setDpo(dpo);
         Declaration saved = declarationRepo.save(d);
 
@@ -510,6 +511,7 @@ public class DeclarationService {
 
         d.setStatut(StatutDeclaration.REJETEE_CIL);
         d.setCil(cil);
+        d.setMotifRejetCil(commentaire);
         Declaration saved = declarationRepo.save(d);
 
         journalAuditService.enregistrer(cil, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
@@ -556,6 +558,7 @@ public class DeclarationService {
 
         d.setStatut(StatutDeclaration.REJETEE_CIL);
         d.setCleApiCil(cle);
+        d.setMotifRejetCil(commentaire);
         Declaration saved = declarationRepo.save(d);
 
         journalAuditService.enregistrer(null, TypeAction.MODIFICATION, ModuleConserne.DECLARATION, ResultatAction.SUCCES);
@@ -573,8 +576,22 @@ public class DeclarationService {
 
     /** Déclarations déjà traitées par un partenaire externe (identifié par sa clé API). */
     public List<HistoriqueDeclarationResponse> listerHistoriqueParCleApi(Long cleApiCilId) {
+        // Une déclaration change de statut plusieurs fois pendant son cycle de vie
+        // (EN_ATTENTE_DG → EN_VERIFICATION_CIL → VALIDEE_CIL/REJETEE_CIL), et chaque
+        // changement crée une ligne d'historique. Pour l'écran "Historique" de la CIL,
+        // on ne veut voir QUE la décision finale de la CIL (validée ou rejetée), et une
+        // seule fois par déclaration — la plus récente (utile si rejetée puis corrigée
+        // et re-décidée).
         return historiqueDeclarationRepo.findByCleApiCilId(cleApiCilId).stream()
+                .filter(h -> h.getStatut() == StatutDeclaration.VALIDEE_CIL
+                          || h.getStatut() == StatutDeclaration.REJETEE_CIL)
+                .collect(Collectors.toMap(
+                        h -> h.getDeclaration().getIdDeclaration(),
+                        h -> h,
+                        (existing, candidate) -> existing.getIdHistorique() >= candidate.getIdHistorique() ? existing : candidate))
+                .values().stream()
                 .map(this::toHistoriqueResponse)
+                .sorted((a, b) -> b.getIdHistorique().compareTo(a.getIdHistorique()))
                 .collect(Collectors.toList());
     }
 
@@ -820,6 +837,7 @@ public class DeclarationService {
             r.setIdDeclaration(d.getIdDeclaration());
             r.setTypeDeclaration(detecterType(d));
             r.setIntitule(extraireIntitule(d));
+            r.setMotifRejetCil(d.getMotifRejetCil());
             if (d.getTraitement() != null) {
                 r.setTraitementId(d.getTraitement().getIdTraitement());
                 r.setTraitementNom(d.getTraitement().getNom());
@@ -1114,6 +1132,7 @@ public class DeclarationService {
         r.setTypeDeclaration(type);
         r.setDateSoumission(d.getDateSoumission());
         r.setStatut(d.getStatut());
+        r.setMotifRejetCil(d.getMotifRejetCil());
         r.setOrigineDeclaration(d.getOrigineDeclaration() != null ? d.getOrigineDeclaration().name() : "MANUELLE");
 
         Traitement effectiveTrt = trt != null ? trt : d.getTraitement();

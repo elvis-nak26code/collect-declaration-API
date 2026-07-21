@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class DeclarationResponse {
 
     private Long idDeclaration;
+    private String motifRejetCil;
     private String typeDeclaration;
     private LocalDate dateSoumission;
     private StatutDeclaration statut;
