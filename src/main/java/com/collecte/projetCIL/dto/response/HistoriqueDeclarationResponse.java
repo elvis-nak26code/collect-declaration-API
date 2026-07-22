@@ -19,6 +19,7 @@ public class HistoriqueDeclarationResponse {
     private Long idDeclaration;
     private String typeDeclaration;
     private String intitule;          // dénomination / nom de traitement, pour l'affichage
+    private String motifRejetCil;     // renseigné uniquement si statut == REJETEE_CIL
 
     private Long traitementId;
     private String traitementNom;
