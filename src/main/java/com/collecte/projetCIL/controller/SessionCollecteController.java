@@ -50,4 +50,18 @@ public class SessionCollecteController {
             @RequestParam StatutSession valeur) {
         return ResponseEntity.ok(sessionCollecteService.changerStatut(id, valeur));
     }
+
+    // PUT /api/sessions/{id}
+    // Modifier une session existante (nom, lieu, type, description, dates).
+    // NOTE : cet endpoint manquait — c'était la cause de l'erreur interne
+    // renvoyée par le frontend lors de la modification d'une session
+    // (le service SessionCollecteService.modifierSession() existait déjà
+    // mais n'était jamais appelé, faute de route PUT).
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_DPO','ROLE_ADMINISTRATEUR')")
+    public ResponseEntity<SessionCollecteResponse> modifierSession(
+            @PathVariable Long id,
+            @RequestBody SessionCollecteRequest request) {
+        return ResponseEntity.ok(sessionCollecteService.modifierSession(id, request));
+    }
 }

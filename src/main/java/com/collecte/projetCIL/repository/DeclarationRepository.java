@@ -22,10 +22,15 @@ public interface DeclarationRepository extends JpaRepository<Declaration, Long> 
     List<Declaration> findByStatut(@Param("statut") StatutDeclaration statut);
 
     /**
-     * Déclarations EN_ATTENTE avec DPO renseigné = réellement soumises par un DPO.
-     * Exclut les brouillons auto-générés par les traitements (dpo null).
+     * Déclarations EN_ATTENTE créées manuellement par un DPO (origine MANUELLE).
+     * Exclut à la fois les brouillons auto-générés par les traitements (dpo null)
+     * ET les déclarations auto-générées avec un traitement même si elles ont été
+     * soumises par la suite (origine AUTOMATIQUE) : seules celles créées explicitement
+     * par le DPO via "Déclarer" doivent apparaître dans la file d'attente du DG.
      */
-    @Query("SELECT d FROM Declaration d WHERE d.statut = 'EN_ATTENTE' AND d.dpo IS NOT NULL ORDER BY d.dateSoumission ASC")
+    @Query("SELECT d FROM Declaration d WHERE d.statut = 'EN_ATTENTE' AND d.dpo IS NOT NULL "
+            + "AND d.origineDeclaration = 'MANUELLE' "
+            + "ORDER BY d.dateSoumission ASC")
     List<Declaration> findEnAttenteAvecDpo();
 
     /** Déclarations en attente, triées par date de soumission. */

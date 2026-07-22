@@ -8,6 +8,7 @@ import com.collecte.projetCIL.models.JournalAudit;
 import com.collecte.projetCIL.models.Utilisateur;
 import com.collecte.projetCIL.repository.JournalAuditRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -68,7 +69,13 @@ public class JournalAuditService {
             Utilisateur u = j.getUtilisateur();
             nomPrenom = u.getPrenom() + " " + u.getNom();
             email     = u.getEmail();
-            role      = u.getPermission() != null ? u.getPermission().name() : null;
+            // Le rôle réel de l'utilisateur (DPO, DG, CIL, Administrateur,
+            // UtilisateurMetier, Usager) est porté par la sous-classe JOINED,
+            // pas par l'énum Permission (qui décrit des droits, pas un rôle).
+            // u.getClass() peut renvoyer un proxy Hibernate (ex. "Utilisateur$HibernateProxy$xyz")
+            // au lieu de la vraie sous-classe : Hibernate.getClass() désenveloppe
+            // toujours le proxy et renvoie la classe concrète.
+            role = Hibernate.getClass(u).getSimpleName();
         }
 
         return new JournalAuditResponse(

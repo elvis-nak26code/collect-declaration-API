@@ -402,10 +402,17 @@ public class DeclarationService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * DG : historique complet de toutes les déclarations traitées (hors brouillons),
+     * limité aux déclarations créées manuellement par un DPO (origine MANUELLE).
+     * Les déclarations auto-générées en même temps qu'un traitement (origine
+     * AUTOMATIQUE) ne doivent jamais apparaître côté DG, même une fois soumises.
+     */
     public List<DeclarationResponse> listerHistoriqueDg() {
         return declarationRepo.findAll().stream()
                 .filter(d -> d.getDpo() != null
-                        && d.getStatut() != StatutDeclaration.BROUILLON)
+                        && d.getStatut() != StatutDeclaration.BROUILLON
+                        && d.getOrigineDeclaration() == com.collecte.projetCIL.enums.OrigineDeclaration.MANUELLE)
                 .map(d -> toResponse(d, detecterType(d), null))
                 .collect(Collectors.toList());
     }
