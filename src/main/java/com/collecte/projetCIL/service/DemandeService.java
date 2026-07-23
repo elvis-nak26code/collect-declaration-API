@@ -93,15 +93,33 @@ public class DemandeService {
 
         DonneePersonnelle donnee = demande.getDonneePersonnelle();
 
+        // ✅ CORRECTION : une même donnée (personne + type de donnée) peut être
+        // dupliquée sur plusieurs traitements (+ la copie "entrepôt"). On ne doit
+        // plus modifier/supprimer uniquement la ligne liée à la demande, mais
+        // TOUTES les occurrences de cette donnée, partout où elle est présente.
+        List<DonneePersonnelle> occurrences = resoudreToutesLesOccurrences(donnee);
+
         if ("SUPPRESSION".equalsIgnoreCase(demande.getTypeDemande())) {
-            if (donnee != null) donneeRepository.delete(donnee);
-            demande.setReponse("Donnée supprimée conformément à votre demande.");
-        } else {
-            if (donnee != null && demande.getNouvelleValeur() != null) {
-                donnee.setValeur(demande.getNouvelleValeur());
-                donneeRepository.save(donnee);
+            // On détache la référence de la demande AVANT de supprimer, sinon la
+            // contrainte de clé étrangère (demande.donnee_id -> donnee_personnelle)
+            // provoquerait une erreur puisque la ligne d'origine fait partie des
+            // occurrences supprimées.
+            demande.setDonneePersonnelle(null);
+            demandeRepository.saveAndFlush(demande);
+            if (!occurrences.isEmpty()) {
+                donneeRepository.deleteAll(occurrences);
             }
-            demande.setReponse("Valeur mise à jour conformément à votre demande.");
+            demande.setReponse("Donnée supprimée conformément à votre demande ("
+                    + occurrences.size() + " traitement(s) concerné(s)).");
+        } else {
+            if (!occurrences.isEmpty() && demande.getNouvelleValeur() != null) {
+                for (DonneePersonnelle occ : occurrences) {
+                    occ.setValeur(demande.getNouvelleValeur());
+                }
+                donneeRepository.saveAll(occurrences);
+            }
+            demande.setReponse("Valeur mise à jour conformément à votre demande ("
+                    + occurrences.size() + " traitement(s) concerné(s)).");
         }
 
         demande.setStatutDemande(StatutDemande.ACCEPTEE);
@@ -158,6 +176,28 @@ public class DemandeService {
     public List<DemandeResponse> listerEnAttentePourUm(Long umId) {
         return demandeRepository.findByUtilisateurMetierIdAndStatut(umId, StatutDemande.EN_COURS)
                 .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    /**
+     * Résout toutes les occurrences réelles d'une donnée (même personne + même
+     * type de donnée) à travers tous les traitements où elle est présente, y
+     * compris la copie "entrepôt" (traitement = null). C'est cette liste qu'il
+     * faut modifier/supprimer intégralement pour qu'une demande usager soit
+     * bien répercutée partout où sa donnée existe.
+     * Si la personne ou le type de donnée n'est pas renseigné sur la ligne
+     * d'origine (cas dégradé), on se rabat sur cette seule ligne pour ne pas
+     * bloquer le traitement de la demande.
+     */
+    private List<DonneePersonnelle> resoudreToutesLesOccurrences(DonneePersonnelle donnee) {
+        if (donnee == null) {
+            return List.of();
+        }
+        if (donnee.getPersonne() == null || donnee.getTypeDonnee() == null) {
+            return List.of(donnee);
+        }
+        List<DonneePersonnelle> occurrences = donneeRepository.findByPersonneIdAndTypeDonneeId(
+                donnee.getPersonne().getId(), donnee.getTypeDonnee().getIdTypeDonnee());
+        return occurrences.isEmpty() ? List.of(donnee) : occurrences;
     }
 
     private Demande getDemandeOrThrow(Long id) {

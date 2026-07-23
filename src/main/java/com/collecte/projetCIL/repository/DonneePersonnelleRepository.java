@@ -51,4 +51,13 @@ public interface DonneePersonnelleRepository extends JpaRepository<DonneePersonn
      */
     @Query("SELECT d FROM DonneePersonnelle d WHERE d.traitement IS NULL ORDER BY d.dateCollecte DESC")
     List<DonneePersonnelle> findEntrepot();
+
+    /**
+     * Toutes les occurrences d'une même donnée réelle (même personne + même type
+     * de donnée), tous traitements confondus, y compris la copie "entrepôt"
+     * (traitement = null). Utilisé pour propager une modification/suppression
+     * demandée par l'usager à TOUS les traitements où sa donnée est présente.
+     */
+    @Query("SELECT d FROM DonneePersonnelle d WHERE d.personne.id = :personneId AND d.typeDonnee.idTypeDonnee = :typeDonneeId")
+    List<DonneePersonnelle> findByPersonneIdAndTypeDonneeId(@Param("personneId") Long personneId, @Param("typeDonneeId") Long typeDonneeId);
 }
